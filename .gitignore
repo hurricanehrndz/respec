@@ -85,8 +85,12 @@ go.work.sum
 # .idea/
 # .vscode/
 
-# temporary
+## temporary
 .tmp/
+
+## legacy rpi
+thoughts/
+
 ### Nix
 # Ignore build outputs from performing a nix-build or `nix build` command
 result
