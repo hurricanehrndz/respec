@@ -13,11 +13,6 @@ func init() {
 			RunE:  notImplemented,
 		},
 		&cobra.Command{
-			Use:   "config",
-			Short: "Read or write respec configuration",
-			RunE:  notImplemented,
-		},
-		&cobra.Command{
 			Use:   "stamp",
 			Short: "Record spec.md's sha256 in plan.md frontmatter",
 			RunE:  notImplemented,
