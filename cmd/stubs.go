@@ -8,11 +8,6 @@ import "github.com/spf13/cobra"
 func init() {
 	rootCmd.AddCommand(
 		&cobra.Command{
-			Use:   "install",
-			Short: "Render and install the /rsx:* prompt-templates and skill at user scope",
-			RunE:  notImplemented,
-		},
-		&cobra.Command{
 			Use:   "stamp",
 			Short: "Record spec.md's sha256 in plan.md frontmatter",
 			RunE:  notImplemented,
