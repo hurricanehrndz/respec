@@ -8,11 +8,6 @@ import "github.com/spf13/cobra"
 func init() {
 	rootCmd.AddCommand(
 		&cobra.Command{
-			Use:   "format",
-			Short: "Reflow prose to the configured width, leaving non-prose byte-identical",
-			RunE:  notImplemented,
-		},
-		&cobra.Command{
 			Use:   "render",
 			Short: "Build the central store as a browsable Hugo site",
 			RunE:  notImplemented,
