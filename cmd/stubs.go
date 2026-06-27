@@ -8,16 +8,6 @@ import "github.com/spf13/cobra"
 func init() {
 	rootCmd.AddCommand(
 		&cobra.Command{
-			Use:   "stamp",
-			Short: "Record spec.md's sha256 in plan.md frontmatter",
-			RunE:  notImplemented,
-		},
-		&cobra.Command{
-			Use:   "status",
-			Short: "Report plan staleness (fresh / stale / unstamped)",
-			RunE:  notImplemented,
-		},
-		&cobra.Command{
 			Use:   "format",
 			Short: "Reflow prose to the configured width, leaving non-prose byte-identical",
 			RunE:  notImplemented,
