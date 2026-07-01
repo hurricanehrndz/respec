@@ -33,8 +33,8 @@ func init() {
 					c.SilenceUsage = true
 					return fmt.Errorf("%s is not formatted", path)
 				}
-				fmt.Fprintln(c.OutOrStdout(), "formatted")
-				return nil
+				_, err = fmt.Fprintln(c.OutOrStdout(), "formatted")
+				return err
 			}
 			if bytes.Equal(src, out) {
 				return nil

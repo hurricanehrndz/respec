@@ -31,7 +31,8 @@ func Format(src []byte, width int) []byte {
 	doc := md.Parser().Parse(text.NewReader(src))
 
 	var spans []span
-	ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+	// The walker below never returns an error, so ast.Walk cannot fail.
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}

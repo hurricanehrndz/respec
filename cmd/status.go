@@ -55,8 +55,8 @@ func init() {
 				enc := json.NewEncoder(c.OutOrStdout())
 				return enc.Encode(res)
 			}
-			fmt.Fprintln(c.OutOrStdout(), res.State)
-			return nil
+			_, err = fmt.Fprintln(c.OutOrStdout(), res.State)
+			return err
 		},
 	}
 	cmd.Flags().BoolVar(&asJSON, "json", false, "emit machine-readable JSON")
