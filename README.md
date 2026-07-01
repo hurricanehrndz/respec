@@ -119,6 +119,8 @@ respec serve                              # http://127.0.0.1:1313
 ## Development
 
 ```sh
-devenv shell
-go build ./... && go vet ./... && go test ./...
+devenv shell    # provides go, hugo, just, golangci-lint
+just build      # binary → build/respec
+just test       # go vet + go test
+just lint       # golangci-lint
 ```
