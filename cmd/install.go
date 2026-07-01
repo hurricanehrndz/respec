@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/chernand/respec/internal/config"
-	"github.com/chernand/respec/internal/templates"
+	"github.com/hurricanehrndz/respec/internal/config"
+	"github.com/hurricanehrndz/respec/internal/templates"
 	"github.com/spf13/cobra"
 )
 

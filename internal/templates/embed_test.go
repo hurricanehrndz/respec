@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chernand/respec/internal/config"
+	"github.com/hurricanehrndz/respec/internal/config"
 )
 
 func TestRenderSubstitutesStoreAndInjects(t *testing.T) {

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/chernand/respec/internal/config"
+	"github.com/hurricanehrndz/respec/internal/config"
 )
 
 //go:embed all:assets

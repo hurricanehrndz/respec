@@ -1,6 +1,6 @@
 package main
 
-import "github.com/chernand/respec/cmd"
+import "github.com/hurricanehrndz/respec/cmd"
 
 func main() {
 	cmd.Execute()

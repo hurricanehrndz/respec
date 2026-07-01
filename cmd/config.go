@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/chernand/respec/internal/config"
+	"github.com/hurricanehrndz/respec/internal/config"
 	"github.com/spf13/cobra"
 )
 

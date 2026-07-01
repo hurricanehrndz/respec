@@ -1,4 +1,4 @@
-module github.com/chernand/respec
+module github.com/hurricanehrndz/respec
 
 go 1.26.3
 

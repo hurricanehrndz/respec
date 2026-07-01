@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/chernand/respec/internal/frontmatter"
-	"github.com/chernand/respec/internal/store"
+	"github.com/hurricanehrndz/respec/internal/frontmatter"
+	"github.com/hurricanehrndz/respec/internal/store"
 	"github.com/spf13/cobra"
 )
 

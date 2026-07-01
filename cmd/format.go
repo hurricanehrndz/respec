@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/chernand/respec/internal/config"
-	"github.com/chernand/respec/internal/formatter"
+	"github.com/hurricanehrndz/respec/internal/config"
+	"github.com/hurricanehrndz/respec/internal/formatter"
 	"github.com/spf13/cobra"
 )
 

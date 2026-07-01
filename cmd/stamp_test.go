@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/chernand/respec/internal/store"
+	"github.com/hurricanehrndz/respec/internal/store"
 )
 
 // runRespec executes the root command with args, capturing stdout.
