@@ -1,0 +1,15 @@
+{{ define "main" }}
+<h1>{{ .Title }}</h1>
+{{ with .Content }}{{ . }}{{ end }}
+{{ with .Sections }}
+<h2>Problem spaces</h2>
+<ul>
+{{ range . }}<li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>{{ end }}
+</ul>
+{{ end }}
+{{ with .Pages }}
+<ul>
+{{ range . }}<li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>{{ end }}
+</ul>
+{{ end }}
+{{ end }}

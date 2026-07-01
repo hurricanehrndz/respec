@@ -23,9 +23,3 @@ func Execute() {
 		os.Exit(1)
 	}
 }
-
-// notImplemented is a stub RunE for subcommands not yet built.
-func notImplemented(c *cobra.Command, _ []string) error {
-	fmt.Printf("%s: not implemented\n", c.Name())
-	return nil
-}

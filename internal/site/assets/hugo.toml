@@ -1,0 +1,6 @@
+baseURL = "/"
+title = "respec store"
+
+# Preserve inline HTML in artifacts (R-10). Hugo enables GFM tables by default.
+[markup.goldmark.renderer]
+  unsafe = true
