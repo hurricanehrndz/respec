@@ -30,6 +30,7 @@ func init() {
 
 			if check {
 				if !bytes.Equal(src, out) {
+					c.SilenceUsage = true
 					return fmt.Errorf("%s is not formatted", path)
 				}
 				fmt.Fprintln(c.OutOrStdout(), "formatted")
