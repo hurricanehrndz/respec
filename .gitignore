@@ -85,6 +85,9 @@ go.work.sum
 # .idea/
 # .vscode/
 
+## build artifacts
+build/
+
 ## temporary
 .tmp/
 

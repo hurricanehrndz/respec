@@ -20,6 +20,9 @@
   scripts.hello.exec = ''
     echo hello from $GREET
   '';
+  scripts.build.exec = ''
+    go build -C "$DEVENV_ROOT" -o build/respec .
+  '';
 
   # https://devenv.sh/basics/
   enterShell = ''
