@@ -2,11 +2,11 @@
 
 {
   # https://devenv.sh/packages/
-  packages = [
-    pkgs.git
-    pkgs.hugo
-    pkgs.just
-    pkgs.golangci-lint
+  packages = with pkgs; [
+    git
+    hugo
+    just
+    golangci-lint
   ];
 
   # https://devenv.sh/languages/
