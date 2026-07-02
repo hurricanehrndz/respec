@@ -24,11 +24,15 @@ const (
 	KindPlan     Kind = "plan"
 )
 
+// StatusDone is the terminal plan status; a depends_on reference is satisfied
+// only when the dependency's plan reaches it.
+const StatusDone = "done"
+
 // Allowed status values per artifact.
 var (
 	researchStatuses = []string{"draft", "complete"}
 	specStatuses     = []string{"draft", "approved"}
-	planStatuses     = []string{"draft", "approved", "in-progress", "done"}
+	planStatuses     = []string{"draft", "approved", "in-progress", StatusDone}
 )
 
 // Research is the typed frontmatter of research.md. The agent writes topic,
@@ -65,9 +69,26 @@ type Plan struct {
 	body      []byte
 }
 
+// IsDone reports whether the plan has reached its terminal status.
+func (pl Plan) IsDone() bool { return pl.Status == StatusDone }
+
 // Artifact is the common contract: report validation problems (empty = valid).
 type Artifact interface {
 	Validate() []string
+}
+
+// StatusOf returns the frontmatter status of any artifact kind.
+func StatusOf(a Artifact) string {
+	switch v := a.(type) {
+	case Research:
+		return v.Status
+	case Spec:
+		return v.Status
+	case Plan:
+		return v.Status
+	default:
+		return ""
+	}
 }
 
 // Parse decodes data into the typed artifact for kind.

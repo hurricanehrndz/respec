@@ -49,3 +49,17 @@ func TestFormatCheckFailsOnUnformattedDir(t *testing.T) {
 		t.Errorf("error = %q, want 'not formatted'", err.Error())
 	}
 }
+
+func TestFormatErrorsOnDirWithoutMarkdown(t *testing.T) {
+	// A dir with zero *.md files must fail loud, not let --check pass vacuously.
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runRespecErr(t, "format", dir, "--check"); err == nil {
+		t.Fatal("expected error for dir without *.md files")
+	}
+	if _, err := runRespecErr(t, "format", dir, "--check=false"); err == nil {
+		t.Fatal("expected error for dir without *.md files (write mode)")
+	}
+}

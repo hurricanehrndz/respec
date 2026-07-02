@@ -122,3 +122,18 @@ func TestSHA256File(t *testing.T) {
 		t.Errorf("SHA256File = %q, want %q", got, want)
 	}
 }
+
+func TestFreshness(t *testing.T) {
+	cases := []struct {
+		recorded, actual, want string
+	}{
+		{"", "abc", "unstamped"},
+		{"abc", "abc", "fresh"},
+		{"old", "abc", "stale"},
+	}
+	for _, c := range cases {
+		if got := Freshness(c.recorded, c.actual); got != c.want {
+			t.Errorf("Freshness(%q, %q) = %q, want %q", c.recorded, c.actual, got, c.want)
+		}
+	}
+}

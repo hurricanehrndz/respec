@@ -77,6 +77,11 @@ the same repo, or `repo/slug` cross-repo); `respec list` shows a dependent as
 `(blocked)` until its dependencies reach `status: done`. This is for visibility —
 respec does not orchestrate or auto-run efforts.
 
+Breaking change: earlier versions laid the store out as
+`<problem-space>/<YYYY-MM-DD-slug>/`. respec does not migrate old stores —
+move each effort directory to `<owner-repo>/<slug>/` by hand (the date lives
+in frontmatter, which `respec stamp` fills).
+
 Staleness is asymmetric by design: only spec→plan is tracked, so editing
 `plan.md` (e.g. ticking checkboxes during implementation) never marks anything
 stale.

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hurricanehrndz/respec/internal/frontmatter"
+	"github.com/hurricanehrndz/respec/internal/artifact"
 	"github.com/hurricanehrndz/respec/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -41,24 +41,21 @@ func init() {
 			if err != nil {
 				return fmt.Errorf("hashing spec.md: %w", err)
 			}
-			plan, err := os.ReadFile(store.PlanPath(changeDir))
+			planData, err := os.ReadFile(store.PlanPath(changeDir))
 			if err != nil {
 				return err
 			}
-			recorded, present, err := frontmatter.GetString(plan, specSHAKey)
+			art, err := artifact.Parse(artifact.KindPlan, planData)
 			if err != nil {
 				return err
+			}
+			var recorded string
+			if pl, ok := art.(artifact.Plan); ok {
+				recorded = pl.SpecSHA
 			}
 
 			res := statusResult{Change: changeDir, SpecSHA: specSHA, Recorded: recorded}
-			switch {
-			case !present || recorded == "":
-				res.State = "unstamped"
-			case recorded == specSHA:
-				res.State = "fresh"
-			default:
-				res.State = "stale"
-			}
+			res.State = store.Freshness(recorded, specSHA)
 			res.Artifacts = artifactStatuses(changeDir)
 
 			if asJSON {
@@ -74,24 +71,17 @@ func init() {
 
 // artifactStatuses reports the presence and frontmatter status of each artifact.
 func artifactStatuses(changeDir string) []artifactStatus {
-	targets := []struct {
-		name string
-		path string
-	}{
-		{"research.md", store.ResearchPath(changeDir)},
-		{"spec.md", store.SpecPath(changeDir)},
-		{"plan.md", store.PlanPath(changeDir)},
-	}
+	targets := artifactTargets(changeDir)
 	out := make([]artifactStatus, 0, len(targets))
 	for _, t := range targets {
 		as := artifactStatus{Artifact: t.name}
 		switch data, err := os.ReadFile(t.path); {
 		case err == nil:
 			as.Present = true
-			if s, ok, gerr := frontmatter.GetString(data, "status"); gerr != nil {
-				as.Error = gerr.Error()
-			} else if ok {
-				as.Status = s
+			if art, perr := artifact.Parse(t.kind, data); perr != nil {
+				as.Error = perr.Error()
+			} else {
+				as.Status = artifact.StatusOf(art)
 			}
 		case !errors.Is(err, os.ErrNotExist):
 			// Unreadable-for-another-reason: report it, never drop the entry.

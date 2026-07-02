@@ -87,5 +87,9 @@ func markdownTargets(path string) ([]string, error) {
 		}
 		return nil
 	})
+	if err == nil && len(files) == 0 {
+		// A dir with nothing to format would make --check pass vacuously.
+		return nil, fmt.Errorf("no *.md files found under %q", path)
+	}
 	return files, err
 }

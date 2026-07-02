@@ -134,6 +134,19 @@ func ValidateChangeDir(changeDir string) error {
 	return nil
 }
 
+// Freshness classifies a plan's recorded spec hash against the actual one:
+// "unstamped" (nothing recorded), "fresh" (match), or "stale" (mismatch).
+func Freshness(recorded, actual string) string {
+	switch recorded {
+	case "":
+		return "unstamped"
+	case actual:
+		return "fresh"
+	default:
+		return "stale"
+	}
+}
+
 // SHA256File returns the lowercase hex sha256 of the file at path.
 func SHA256File(path string) (string, error) {
 	data, err := os.ReadFile(path)

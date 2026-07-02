@@ -111,6 +111,31 @@ func TestParseUnknownKind(t *testing.T) {
 	}
 }
 
+func TestPlanIsDone(t *testing.T) {
+	if (Plan{Status: "in-progress"}).IsDone() {
+		t.Error("in-progress plan reported done")
+	}
+	if !(Plan{Status: StatusDone}).IsDone() {
+		t.Error("done plan not reported done")
+	}
+}
+
+func TestStatusOf(t *testing.T) {
+	cases := []struct {
+		a    Artifact
+		want string
+	}{
+		{Research{Status: "draft"}, "draft"},
+		{Spec{Status: "approved"}, "approved"},
+		{Plan{Status: "done"}, "done"},
+	}
+	for _, c := range cases {
+		if got := StatusOf(c.a); got != c.want {
+			t.Errorf("StatusOf(%T) = %q, want %q", c.a, got, c.want)
+		}
+	}
+}
+
 func contains(ss []string, want string) bool {
 	for _, s := range ss {
 		if s == want {

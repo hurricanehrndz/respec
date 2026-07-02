@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/hurricanehrndz/respec/internal/artifact"
-	"github.com/hurricanehrndz/respec/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -21,21 +20,6 @@ type lintResult struct {
 	Change    string         `json:"change"`
 	OK        bool           `json:"ok"`
 	Artifacts []lintArtifact `json:"artifacts"`
-}
-
-// lintTarget pairs an artifact kind with its filename and path in a change dir.
-type lintTarget struct {
-	name string
-	kind artifact.Kind
-	path string
-}
-
-func lintTargets(changeDir string) []lintTarget {
-	return []lintTarget{
-		{"research.md", artifact.KindResearch, store.ResearchPath(changeDir)},
-		{"spec.md", artifact.KindSpec, store.SpecPath(changeDir)},
-		{"plan.md", artifact.KindPlan, store.PlanPath(changeDir)},
-	}
 }
 
 func init() {
@@ -56,7 +40,7 @@ func init() {
 
 			res := lintResult{Change: changeDir, OK: true}
 			present := 0
-			for _, t := range lintTargets(changeDir) {
+			for _, t := range artifactTargets(changeDir) {
 				data, err := os.ReadFile(t.path)
 				if errors.Is(err, os.ErrNotExist) {
 					continue

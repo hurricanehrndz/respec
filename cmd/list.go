@@ -43,18 +43,18 @@ func init() {
 			}
 
 			rows := make([]listRow, 0, len(changes))
-			statusByRef := map[string]string{} // "repo/slug" -> plan status
+			doneByRef := map[string]bool{} // "repo/slug" -> plan is done
 			var warnings []string
 			for _, ch := range changes {
-				row, warns := effortRow(ch)
+				row, done, warns := effortRow(ch)
 				rows = append(rows, row)
 				warnings = append(warnings, warns...)
-				statusByRef[ch.Repo+"/"+ch.Slug] = row.PlanStatus
+				doneByRef[ch.Repo+"/"+ch.Slug] = done
 			}
 
 			var unresolved []string
 			for i := range rows {
-				rows[i].Blocked, unresolved = resolveDeps(rows[i], statusByRef, unresolved)
+				rows[i].Blocked, unresolved = resolveDeps(rows[i], doneByRef, unresolved)
 			}
 
 			sort.Slice(rows, func(i, j int) bool {
@@ -89,10 +89,10 @@ func init() {
 	rootCmd.AddCommand(cmd)
 }
 
-// effortRow reads a change's plan/spec/date into a display row (blocked unset),
-// returning warnings for anything unreadable or unparseable rather than
-// silently misreporting it (fail loud).
-func effortRow(ch store.Change) (listRow, []string) {
+// effortRow reads a change's plan/spec/date into a display row (blocked unset)
+// plus whether its plan is done, returning warnings for anything unreadable or
+// unparseable rather than silently misreporting it (fail loud).
+func effortRow(ch store.Change) (listRow, bool, []string) {
 	row := listRow{Repo: ch.Repo, Slug: ch.Slug, Dir: ch.Dir}
 	var warns []string
 
@@ -105,39 +105,41 @@ func effortRow(ch store.Change) (listRow, []string) {
 	planData, err := os.ReadFile(store.PlanPath(ch.Dir))
 	if err != nil {
 		row.Spec = "error"
-		return row, append(warns, fmt.Sprintf("%s: %v", store.PlanPath(ch.Dir), err))
+		return row, false, append(warns, fmt.Sprintf("%s: %v", store.PlanPath(ch.Dir), err))
 	}
 	art, perr := artifact.Parse(artifact.KindPlan, planData)
 	if perr != nil {
 		row.Spec = "error"
-		return row, append(warns, fmt.Sprintf("%s: %v", store.PlanPath(ch.Dir), perr))
+		return row, false, append(warns, fmt.Sprintf("%s: %v", store.PlanPath(ch.Dir), perr))
 	}
 	var recorded string
+	var done bool
 	if pl, ok := art.(artifact.Plan); ok {
 		row.PlanStatus = pl.Status
 		row.DependsOn = pl.DependsOn
 		recorded = pl.SpecSHA
+		done = pl.IsDone()
 	}
 	row.Spec = specStateFor(ch.Dir, recorded)
-	return row, warns
+	return row, done, warns
 }
 
 // resolveDeps computes whether a row is blocked (any resolved dependency is not
 // done) and accumulates unresolved references. Same-repo deps are bare slugs;
 // cross-repo deps are "repo/slug".
-func resolveDeps(row listRow, statusByRef map[string]string, unresolved []string) (bool, []string) {
+func resolveDeps(row listRow, doneByRef map[string]bool, unresolved []string) (bool, []string) {
 	blocked := false
 	for _, d := range row.DependsOn {
 		ref := d
 		if !strings.Contains(d, "/") {
 			ref = row.Repo + "/" + d
 		}
-		st, known := statusByRef[ref]
+		done, known := doneByRef[ref]
 		if !known {
 			unresolved = append(unresolved, d)
 			continue
 		}
-		if st != "done" {
+		if !done {
 			blocked = true
 		}
 	}
@@ -154,14 +156,7 @@ func specStateFor(changeDir, recorded string) string {
 	if err != nil {
 		return "error"
 	}
-	switch recorded {
-	case "":
-		return "unstamped"
-	case sum:
-		return "fresh"
-	default:
-		return "stale"
-	}
+	return store.Freshness(recorded, sum)
 }
 
 // effortDate returns the date frontmatter of research.md (else spec.md), the
