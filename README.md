@@ -38,6 +38,11 @@ The store path is baked in either way. Re-running is idempotent; it overwrites
 the respec-owned files with a fresh render, so run it again after changing
 config.
 
+If [probe](https://github.com/probelabs/probe) (local semantic code search) is
+on PATH at install time, the research prompt additionally steers the agent to
+explore with `probe search`/`probe extract`; without it the prompts never
+mention probe. Install probe, then re-run `respec install`, to enable it.
+
 ## Workflow
 
 From any repo, in an agent session (Claude Code names are `/rsx-research` etc.):

@@ -20,6 +20,19 @@ gather enough shared context that the plan phase can proceed efficiently. So:
    the questions that code inspection cannot answer, and do not guess on decisions that change
    direction.
 2. **Explore the code** to ground every finding in reality; capture concrete `file:line` references.
+   Read any files the operator names **in full, first**. Then decompose the topic into a few
+   research areas and — when your agent supports subagents — fan them out **in parallel** with
+   distinct roles: *locate* (where the relevant files and components live), *analyze* (how specific
+   code actually works, reading files fully), *find patterns* (how this codebase already solves
+   similar problems). Let subagents do the bulk reading; keep your own context for the interview
+   and the synthesis.{{if .HasProbe}}
+   `probe` is installed — prefer it over plain grep-and-read for exploration; it returns whole
+   semantic blocks (functions, classes) ranked by relevance, which keeps context small:
+
+       probe search "<terms>" <path>    # Elasticsearch-style query: AND / OR / NOT
+       probe extract <file>#<symbol>    # pull one function/class by name
+       probe extract <file>:<line>      # pull the block containing a line
+{{end}}
 3. **Weigh options.** When more than one path exists, lay out the candidates with pros and cons.
    Surface tradeoffs rather than hiding them.
 4. **Record decisions.** When the operator leans toward an approach, write it down with the

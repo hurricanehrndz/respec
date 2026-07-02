@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/hurricanehrndz/respec/internal/config"
@@ -26,7 +27,8 @@ func init() {
 			if err != nil {
 				return err
 			}
-			rendered, err := templates.Render(cfg, target)
+			feats := detectFeatures(c)
+			rendered, err := templates.Render(cfg, target, feats)
 			if err != nil {
 				return err
 			}
@@ -40,6 +42,20 @@ func init() {
 	cmd.Flags().StringVar(&targetName, "target", "", "agent to install for: pi or claude (required)")
 	_ = cmd.MarkFlagRequired("target")
 	rootCmd.AddCommand(cmd)
+}
+
+// detectFeatures probes PATH for optional operator tooling the templates can
+// reference, reporting what was (not) found so the operator knows to re-run
+// install after installing a tool.
+func detectFeatures(c *cobra.Command) templates.Features {
+	feats := templates.Features{}
+	if _, err := exec.LookPath("probe"); err == nil {
+		feats.Probe = true
+		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe found on PATH: prompts include probe search guidance")
+	} else {
+		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe not found on PATH: prompts omit probe guidance (re-run install after installing it)")
+	}
+	return feats
 }
 
 // installFor writes the rendered prompts and skill into the target agent's

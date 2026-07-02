@@ -97,11 +97,19 @@ func (t Target) SkillCmd() string {
 	return "/skill:respec"
 }
 
+// Features records optional operator tooling detected at install time; the
+// templates gate matching guidance on these so prompts never reference tools
+// that are not there.
+type Features struct {
+	Probe bool // the probe code-search binary is on PATH
+}
+
 // RenderData is the template context substituted into each asset.
 type RenderData struct {
-	Store   string
-	Context string
-	Rules   config.Rules
+	Store    string
+	Context  string
+	Rules    config.Rules
+	HasProbe bool
 	Target
 }
 
@@ -200,8 +208,8 @@ func (f TemplateFile) ReadRaw() ([]byte, error) {
 }
 
 // Render reads every prompt and skill asset and renders it with config values
-// for the given target agent.
-func Render(cfg config.Config, target Target) (Rendered, error) {
+// for the given target agent and detected features.
+func Render(cfg config.Config, target Target, feats Features) (Rendered, error) {
 	if _, ok := Targets[target.Name]; !ok {
 		return Rendered{}, fmt.Errorf("unknown render target %q", target.Name)
 	}
@@ -210,10 +218,11 @@ func Render(cfg config.Config, target Target) (Rendered, error) {
 		return Rendered{}, err
 	}
 	data := RenderData{
-		Store:   cfg.StorePath(),
-		Context: cfg.Context,
-		Rules:   cfg.Rules,
-		Target:  target,
+		Store:    cfg.StorePath(),
+		Context:  cfg.Context,
+		Rules:    cfg.Rules,
+		HasProbe: feats.Probe,
+		Target:   target,
 	}
 	out := Rendered{
 		Prompts: map[string]string{},
