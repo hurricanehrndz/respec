@@ -4,14 +4,14 @@ argument-hint: "<topic>"
 ---
 You are in the **Research** phase of the respec workflow (research → plan → implement).
 
-Topic: $@
+Topic: {{.AllArgs}}
 
 Central store (all artifacts live here, never in the worked-on repo):
 
     {{.Store}}
 
 Load the detailed workflow before doing anything else: read the `respec` skill at
-`~/.pi/agent/skills/respec/SKILL.md` (or invoke `/skill:respec`). Follow it.
+`{{.SkillPath}}` (or invoke `{{.SkillCmd}}`). Follow it.
 
 Research here is **interview-driven context-building**, not neutral archaeology. The goal is to
 gather enough shared context that the plan phase can proceed efficiently. So:

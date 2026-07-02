@@ -26,11 +26,83 @@ var embedded embed.FS
 // EmbeddedSource is the reported source label for built-in templates.
 const EmbeddedSource = "embedded"
 
+// Target is an agent flavor the templates render for. The prompt bodies are
+// agent-agnostic; everything agent-specific — argument placeholders, installed
+// command names, where the skill lives — resolves through Target's methods.
+type Target struct {
+	Name string // "pi" | "claude"
+}
+
+var (
+	TargetPi     = Target{Name: "pi"}
+	TargetClaude = Target{Name: "claude"}
+
+	// Targets maps a --target flag value to its Target.
+	Targets = map[string]Target{"pi": TargetPi, "claude": TargetClaude}
+)
+
+func (t Target) isClaude() bool { return t.Name == TargetClaude.Name }
+
+// AllArgs is the placeholder expanding to the invocation's whole argument string.
+func (t Target) AllArgs() string {
+	if t.isClaude() {
+		return "$ARGUMENTS"
+	}
+	return "$@"
+}
+
+// Arg1Or is the first-argument placeholder with a fallback when absent. Claude
+// Code has no default syntax (bash-style ${1:-...} is unsupported), so there
+// the surrounding prose must carry the fallback and the raw placeholder is
+// emitted; pi embeds the default.
+func (t Target) Arg1Or(def string) string {
+	if t.isClaude() {
+		return "$ARGUMENTS"
+	}
+	return "${1:-" + def + "}"
+}
+
+// Arg1Req is the first-argument placeholder for a required argument, same
+// caveat as Arg1Or: only pi can enforce it in the placeholder itself.
+func (t Target) Arg1Req(msg string) string {
+	if t.isClaude() {
+		return "$ARGUMENTS"
+	}
+	return "${1:?" + msg + "}"
+}
+
+// Cmd returns the installed command name for a prompt. pi namespaces with a
+// colon (/rsx:plan); Claude Code user-scope command names cannot contain one,
+// so the namespace flattens to a hyphen (/rsx-plan).
+func (t Target) Cmd(name string) string {
+	if t.isClaude() {
+		return "/rsx-" + name
+	}
+	return "/rsx:" + name
+}
+
+// SkillPath is where the installed respec skill lives at user scope.
+func (t Target) SkillPath() string {
+	if t.isClaude() {
+		return "~/.claude/skills/respec/SKILL.md"
+	}
+	return "~/.pi/agent/skills/respec/SKILL.md"
+}
+
+// SkillCmd is how the operator invokes the respec skill interactively.
+func (t Target) SkillCmd() string {
+	if t.isClaude() {
+		return "/respec"
+	}
+	return "/skill:respec"
+}
+
 // RenderData is the template context substituted into each asset.
 type RenderData struct {
 	Store   string
 	Context string
 	Rules   config.Rules
+	Target
 }
 
 // Rendered holds the rendered assets keyed by their install-relative path.
@@ -127,8 +199,12 @@ func (f TemplateFile) ReadRaw() ([]byte, error) {
 	return fs.ReadFile(f.fsys, f.path)
 }
 
-// Render reads every prompt and skill asset and renders it with config values.
-func Render(cfg config.Config) (Rendered, error) {
+// Render reads every prompt and skill asset and renders it with config values
+// for the given target agent.
+func Render(cfg config.Config, target Target) (Rendered, error) {
+	if _, ok := Targets[target.Name]; !ok {
+		return Rendered{}, fmt.Errorf("unknown render target %q", target.Name)
+	}
 	files, err := Resolve(cfg)
 	if err != nil {
 		return Rendered{}, err
@@ -137,6 +213,7 @@ func Render(cfg config.Config) (Rendered, error) {
 		Store:   cfg.StorePath(),
 		Context: cfg.Context,
 		Rules:   cfg.Rules,
+		Target:  target,
 	}
 	out := Rendered{
 		Prompts: map[string]string{},

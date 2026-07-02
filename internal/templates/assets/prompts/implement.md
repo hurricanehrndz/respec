@@ -4,21 +4,21 @@ argument-hint: "<change-dir>"
 ---
 You are in the **Implement** phase of the respec workflow (research → plan → implement).
 
-Change directory: ${1:?provide the change directory under the store}
+Change directory (required — stop and ask if missing): {{.Arg1Req "provide the change directory under the store"}}
 
 Central store:
 
     {{.Store}}
 
-Load the detailed workflow first: read `~/.pi/agent/skills/respec/SKILL.md` (or `/skill:respec`).
+Load the detailed workflow first: read `{{.SkillPath}}` (or `{{.SkillCmd}}`).
 
 **Gate before doing any work.** Run:
 
     respec status <change-dir> --json
 
 - If the state is `stale`, STOP. The spec changed after the plan was stamped. Tell the operator to
-  re-plan with `/rsx:plan <change-dir>` and do not implement.
-- If the state is `unstamped`, STOP and tell the operator to run `/rsx:plan` so the plan is stamped.
+  re-plan with `{{.Cmd "plan"}} <change-dir>` and do not implement.
+- If the state is `unstamped`, STOP and tell the operator to run `{{.Cmd "plan"}}` so the plan is stamped.
 - If the state is `fresh`, proceed.
 
 When fresh:

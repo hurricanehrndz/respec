@@ -11,47 +11,75 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(&cobra.Command{
-		Use:   "install",
-		Short: "Render and install the /rsx:* prompt-templates and skill at user scope",
+	var targetName string
+	cmd := &cobra.Command{
+		Use:   "install --target <pi|claude>",
+		Short: "Render and install the prompt-templates and skill at user scope for an agent",
 		Args:  cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(c *cobra.Command, _ []string) error {
+			target, ok := templates.Targets[targetName]
+			if !ok {
+				c.SilenceUsage = true
+				return fmt.Errorf("unknown --target %q (valid: pi, claude)", targetName)
+			}
 			cfg, err := config.Load()
 			if err != nil {
 				return err
 			}
-			rendered, err := templates.Render(cfg)
+			rendered, err := templates.Render(cfg, target)
 			if err != nil {
 				return err
 			}
-
 			home, err := os.UserHomeDir()
 			if err != nil {
 				return err
 			}
-			promptsDir := filepath.Join(home, ".pi", "agent", "prompts")
-			skillsDir := filepath.Join(home, ".pi", "agent", "skills")
-
-			// respec installs all prompts under the rsx: namespace; embedded
-			// asset files cannot carry a colon (go:embed forbids it), so the
-			// prefix is applied here.
-			for name, content := range rendered.Prompts {
-				dst := filepath.Join(promptsDir, "rsx:"+name)
-				if err := writeFile(dst, content); err != nil {
-					return err
-				}
-				fmt.Printf("installed prompt: %s\n", dst)
-			}
-			for rel, content := range rendered.Skills {
-				dst := filepath.Join(skillsDir, filepath.FromSlash(rel))
-				if err := writeFile(dst, content); err != nil {
-					return err
-				}
-				fmt.Printf("installed skill:  %s\n", dst)
-			}
-			return nil
+			return installFor(c, target, home, rendered)
 		},
-	})
+	}
+	cmd.Flags().StringVar(&targetName, "target", "", "agent to install for: pi or claude (required)")
+	_ = cmd.MarkFlagRequired("target")
+	rootCmd.AddCommand(cmd)
+}
+
+// installFor writes the rendered prompts and skill into the target agent's
+// user-scope directories.
+func installFor(c *cobra.Command, target templates.Target, home string, rendered templates.Rendered) error {
+	var promptDst func(name string) string
+	var skillsDir string
+	switch target {
+	case templates.TargetPi:
+		// pi installs prompts under the rsx: namespace; embedded asset files
+		// cannot carry a colon (go:embed forbids it), so the prefix is
+		// applied here.
+		promptsDir := filepath.Join(home, ".pi", "agent", "prompts")
+		promptDst = func(name string) string { return filepath.Join(promptsDir, "rsx:"+name) }
+		skillsDir = filepath.Join(home, ".pi", "agent", "skills")
+	case templates.TargetClaude:
+		// Claude Code user-scope command names cannot contain a colon, so
+		// the rsx namespace flattens to a hyphen: /rsx-research etc.
+		commandsDir := filepath.Join(home, ".claude", "commands")
+		promptDst = func(name string) string { return filepath.Join(commandsDir, "rsx-"+name) }
+		skillsDir = filepath.Join(home, ".claude", "skills")
+	default:
+		return fmt.Errorf("no install layout for target %q", target.Name)
+	}
+
+	for name, content := range rendered.Prompts {
+		dst := promptDst(name)
+		if err := writeFile(dst, content); err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(c.OutOrStdout(), "installed prompt: %s\n", dst)
+	}
+	for rel, content := range rendered.Skills {
+		dst := filepath.Join(skillsDir, filepath.FromSlash(rel))
+		if err := writeFile(dst, content); err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(c.OutOrStdout(), "installed skill:  %s\n", dst)
+	}
+	return nil
 }
 
 // writeFile creates parent dirs and writes content (idempotent overwrite).

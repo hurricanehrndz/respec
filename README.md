@@ -2,12 +2,14 @@
 
 `respec` drives a `research → plan → implement` workflow for a single operator.
 All artifacts live in **one central store** (a git repo you own), never in the
-repo you are working on. The actual reasoning is done by the agent (running in
-[pi](https://github.com/earendil-works/pi)) executing installed `/rsx:*`
-prompt-templates; the `respec` CLI does deterministic plumbing only:
+repo you are working on. The actual reasoning is done by the agent — running in
+[pi](https://github.com/earendil-works/pi) or
+[Claude Code](https://code.claude.com) — executing installed prompt-templates
+(`/rsx:*` in pi, `/rsx-*` in Claude Code); the `respec` CLI does deterministic
+plumbing only:
 
 - hold config (store path, optional injected context/rules),
-- render and install the `/rsx:research|plan|implement` prompts + backing skill at user scope,
+- render and install the research|plan|implement prompts + backing skill at user scope,
 - stamp deterministic frontmatter — provenance (date, repo, git commit) and the
   spec→plan staleness hash — and auto-reflow the artifacts,
 - validate artifacts (`lint`) and reflow prose without touching structure,
@@ -15,24 +17,30 @@ prompt-templates; the `respec` CLI does deterministic plumbing only:
 
 ## Setup
 
-Requires Go and Hugo (both provided by the repo's `devenv` shell) and pi.
+Requires Go and Hugo (both provided by the repo's `devenv` shell) and an
+agent: pi and/or Claude Code.
 
 ```sh
 go install github.com/hurricanehrndz/respec@latest
 
 respec config set store ~/respec-store   # central store (default: ~/respec-store)
-respec install                           # render + install /rsx:* prompts and the respec skill
+respec install --target pi               # render + install prompts and the respec skill
+respec install --target claude           # same, for Claude Code (run both if you use both)
 ```
 
-`respec install` writes the prompts to
+`--target pi` writes the prompts to
 `~/.pi/agent/prompts/rsx:{research,plan,implement}.md` and the skill to
-`~/.pi/agent/skills/respec/`, with the store path baked in. Re-running it is
-idempotent; it overwrites the respec-owned files with a fresh render, so run it
-again after changing config.
+`~/.pi/agent/skills/respec/`. `--target claude` writes the commands to
+`~/.claude/commands/rsx-{research,plan,implement}.md` (Claude Code command
+names cannot contain a colon, so there the workflow is
+`/rsx-research|plan|implement`) and the skill to `~/.claude/skills/respec/`.
+The store path is baked in either way. Re-running is idempotent; it overwrites
+the respec-owned files with a fresh render, so run it again after changing
+config.
 
 ## Workflow
 
-From any repo, in an agent session:
+From any repo, in an agent session (Claude Code names are `/rsx-research` etc.):
 
 1. `/rsx:research <topic>` — an interview-driven exploration that writes `research.md` into
    `<store>/<owner-repo>/<slug>/` (efforts are grouped by the primary repo they affect), then runs
@@ -53,7 +61,7 @@ Nothing is ever written to the repo you invoke from.
 | --- | --- |
 | `respec config get\|set <key> [value]` | Read/write `~/.config/respec/config.yaml` |
 | `respec config path` | Print the config file path |
-| `respec install` | Render + install the `/rsx:*` prompts and skill at user scope |
+| `respec install --target <pi\|claude>` | Render + install the prompts and skill at user scope for that agent |
 | `respec stamp <change-dir> [--repo <path>]` | Write provenance + `spec_sha256` into the artifacts, then reflow them |
 | `respec status <change-dir> [--json]` | Report `fresh` / `stale` / `unstamped` plus per-artifact status |
 | `respec list [--json]` | List every effort in the store, grouped by repo, with status/staleness |
@@ -121,7 +129,7 @@ A full check of the v1 definition of done, using a throwaway store and repo:
 # 1. point respec at a throwaway store and install
 respec config set store /tmp/respec-store
 mkdir -p /tmp/respec-store /tmp/scratch-repo
-respec install
+respec install --target pi
 
 # 2. from the unrelated repo, run the workflow in a pi session
 cd /tmp/scratch-repo && git init -q .

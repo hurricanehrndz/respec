@@ -7,21 +7,21 @@ import (
 	"testing"
 )
 
-func runInstall(t *testing.T) string {
+func runInstall(t *testing.T, target string) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	rootCmd.SetArgs([]string{"install"})
+	rootCmd.SetArgs([]string{"install", "--target", target})
 	rootCmd.SetOut(os.NewFile(0, os.DevNull))
 	rootCmd.SetErr(os.NewFile(0, os.DevNull))
 	if err := rootCmd.Execute(); err != nil {
-		t.Fatalf("install: %v", err)
+		t.Fatalf("install --target %s: %v", target, err)
 	}
 	return home
 }
 
-func TestInstallWritesUserScopeFiles(t *testing.T) {
-	home := runInstall(t)
+func TestInstallPiWritesUserScopeFiles(t *testing.T) {
+	home := runInstall(t, "pi")
 
 	prompts := []string{"rsx:research.md", "rsx:plan.md", "rsx:implement.md"}
 	for _, name := range prompts {
@@ -45,8 +45,50 @@ func TestInstallWritesUserScopeFiles(t *testing.T) {
 	}
 }
 
+func TestInstallClaudeWritesUserScopeFiles(t *testing.T) {
+	home := runInstall(t, "claude")
+
+	prompts := []string{"rsx-research.md", "rsx-plan.md", "rsx-implement.md"}
+	for _, name := range prompts {
+		p := filepath.Join(home, ".claude", "commands", name)
+		data, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("expected installed command %s: %v", p, err)
+		}
+		if strings.Contains(string(data), "{{") {
+			t.Errorf("%s has unexpanded template directives", name)
+		}
+		// No pi-isms may leak into the Claude Code render.
+		for _, forbidden := range []string{"$@", "${1", "~/.pi/"} {
+			if strings.Contains(string(data), forbidden) {
+				t.Errorf("%s contains pi-ism %q", name, forbidden)
+			}
+		}
+	}
+
+	skill := filepath.Join(home, ".claude", "skills", "respec", "SKILL.md")
+	if _, err := os.ReadFile(skill); err != nil {
+		t.Fatalf("expected installed skill %s: %v", skill, err)
+	}
+}
+
+func TestInstallRejectsUnknownTarget(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	rootCmd.SetArgs([]string{"install", "--target", "emacs"})
+	rootCmd.SetOut(os.NewFile(0, os.DevNull))
+	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for unknown --target")
+	}
+	if !strings.Contains(err.Error(), "emacs") {
+		t.Errorf("error should name the bad target, got: %v", err)
+	}
+}
+
 func TestInstallIsIdempotent(t *testing.T) {
-	home := runInstall(t)
+	home := runInstall(t, "pi")
 	research := filepath.Join(home, ".pi", "agent", "prompts", "rsx:research.md")
 	first, err := os.ReadFile(research)
 	if err != nil {
@@ -54,7 +96,7 @@ func TestInstallIsIdempotent(t *testing.T) {
 	}
 
 	// Re-run install in the same HOME.
-	rootCmd.SetArgs([]string{"install"})
+	rootCmd.SetArgs([]string{"install", "--target", "pi"})
 	rootCmd.SetOut(os.NewFile(0, os.DevNull))
 	rootCmd.SetErr(os.NewFile(0, os.DevNull))
 	if err := rootCmd.Execute(); err != nil {

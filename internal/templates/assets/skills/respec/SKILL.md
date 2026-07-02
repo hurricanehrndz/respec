@@ -1,6 +1,6 @@
 ---
 name: respec
-description: The respec spec-driven workflow (research → plan → implement) over a single central store. Use when running /rsx:research, /rsx:plan, or /rsx:implement, or when creating/editing research.md, spec.md, or plan.md artifacts, or when calling the respec CLI (stamp, status, lint, format, templates, render, serve).
+description: The respec spec-driven workflow (research → plan → implement) over a single central store. Use when running {{.Cmd "research"}}, {{.Cmd "plan"}}, or {{.Cmd "implement"}}, or when creating/editing research.md, spec.md, or plan.md artifacts, or when calling the respec CLI (stamp, status, lint, format, templates, render, serve).
 ---
 
 # respec workflow
@@ -45,14 +45,14 @@ sections.
 
 ## Phases
 
-### Research (`/rsx:research <topic>`)
+### Research (`{{.Cmd "research"}} <topic>`)
 Interview-driven context-building — not neutral documentation. Clarify the topic, explore the code
 (`file:line` refs), weigh options with pros/cons, and record the decisions the operator leans
 toward. Write `research.md` (required sections: Research Question, Summary, Findings, Open
 Questions; add Options & Tradeoffs / Decisions as needed), then `respec stamp <change-dir>`.
 Nothing goes to the worked-on repo.
 
-### Plan (`/rsx:plan [change-dir]`)
+### Plan (`{{.Cmd "plan"}} [change-dir]`)
 Read `research.md` (its Decisions are settled constraints). Co-generate `spec.md` + `plan.md`
 (shared deliverables). The plan is phased with, per phase, an **Automated Verification** checklist
 (commands you can tick yourself) and a **Manual Verification** checklist (operator judgment calls).
@@ -60,13 +60,13 @@ If a plan exists and is **stale**, amend it surgically. Then:
 
     respec stamp <change-dir>
 
-### Implement (`/rsx:implement <change-dir>`)
+### Implement (`{{.Cmd "implement"}} <change-dir>`)
 First gate on staleness:
 
     respec status <change-dir> --json
 
 - `stale`   → the spec changed after stamping; STOP and re-plan.
-- `unstamped` → STOP and run `/rsx:plan` to stamp.
+- `unstamped` → STOP and run `{{.Cmd "plan"}}` to stamp.
 - `fresh`   → proceed: execute phases in order, ticking Automated checks as they pass and pausing
   at each phase's Manual checks for operator confirmation.
 
@@ -80,13 +80,13 @@ the current spec.
 ## CLI reference
 
     respec config get|set|path           # configuration (~/.config/respec/config.yaml)
-    respec install                       # (re)install these prompts + this skill at user scope
+    respec install --target <agent>      # (re)install these prompts + this skill at user scope (pi | claude)
     respec stamp <change-dir>            # write provenance + spec_sha256, then reflow the artifacts
     respec status <change-dir> [--json]  # per-artifact status + fresh | stale | unstamped
     respec list [--json]                 # every effort in the store, grouped by repo, with staleness
     respec lint <change-dir> [--json]    # validate frontmatter, status, and required sections
     respec format <path> [--check]       # reflow prose only; non-prose left byte-identical
-    respec templates list|eject          # inspect / customize the /rsx:* prompts + skill
+    respec templates list|eject          # inspect / customize the prompt + skill templates
     respec install-hook                  # store pre-commit hook that checks Markdown formatting
     respec render [--out <dir>]          # build the store as a browsable Hugo site
     respec serve                         # serve the store with live reload

@@ -15,7 +15,7 @@ func TestRenderSubstitutesStoreAndInjects(t *testing.T) {
 	cfg.Context = "SHARED-CONTEXT-MARKER"
 	cfg.Rules.Research = "RESEARCH-RULE-MARKER"
 
-	r, err := Render(cfg)
+	r, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestRenderSubstitutesStoreAndInjects(t *testing.T) {
 func TestRenderOmitsEmptyContextAndRules(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
-	r, err := Render(cfg)
+	r, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestRenderLayersOverrideOverEmbedded(t *testing.T) {
 	cfg.Store = "/tmp/over"
 	cfg.TemplatesDir = dir
 
-	r, err := Render(cfg)
+	r, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -141,7 +141,62 @@ func TestResolveErrorsOnMissingTemplatesDir(t *testing.T) {
 	if _, err := Resolve(cfg); err == nil {
 		t.Fatal("expected error for nonexistent templates_dir")
 	}
-	if _, err := Render(cfg); err == nil {
+	if _, err := Render(cfg, TargetPi); err == nil {
 		t.Fatal("Render should propagate the missing-dir error")
+	}
+}
+
+func TestRenderPerTarget(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Store = "/tmp/s"
+
+	pi, err := Render(cfg, TargetPi)
+	if err != nil {
+		t.Fatalf("Render pi: %v", err)
+	}
+	claude, err := Render(cfg, TargetClaude)
+	if err != nil {
+		t.Fatalf("Render claude: %v", err)
+	}
+
+	// pi keeps its bash-flavored placeholders, skill path, and colon namespace.
+	if !strings.Contains(pi.Prompts["research.md"], "Topic: $@") {
+		t.Error("pi research.md should pass arguments via $@")
+	}
+	if !strings.Contains(pi.Prompts["plan.md"], "${1:-<pick latest>}") {
+		t.Error("pi plan.md should default the change dir via ${1:-...}")
+	}
+	if !strings.Contains(pi.Prompts["research.md"], "~/.pi/agent/skills/respec/SKILL.md") {
+		t.Error("pi prompts should reference the pi skill path")
+	}
+	if !strings.Contains(pi.Prompts["implement.md"], "/rsx:plan") {
+		t.Error("pi implement.md should reference /rsx:plan")
+	}
+
+	// Claude Code has no bash-style placeholders and no colons in command names.
+	for name, content := range claude.Prompts {
+		for _, forbidden := range []string{"$@", "${1", "/rsx:", "~/.pi/"} {
+			if strings.Contains(content, forbidden) {
+				t.Errorf("claude prompt %s contains pi-ism %q", name, forbidden)
+			}
+		}
+	}
+	if !strings.Contains(claude.Prompts["research.md"], "Topic: $ARGUMENTS") {
+		t.Error("claude research.md should pass arguments via $ARGUMENTS")
+	}
+	if !strings.Contains(claude.Prompts["research.md"], "~/.claude/skills/respec/SKILL.md") {
+		t.Error("claude prompts should reference the claude skill path")
+	}
+	if !strings.Contains(claude.Prompts["implement.md"], "/rsx-plan") {
+		t.Error("claude implement.md should reference /rsx-plan")
+	}
+	if !strings.Contains(claude.Skills["respec/SKILL.md"], "/rsx-research") {
+		t.Error("claude skill should reference /rsx-research")
+	}
+}
+
+func TestRenderRejectsUnknownTarget(t *testing.T) {
+	if _, err := Render(config.Defaults(), Target{Name: "emacs"}); err == nil {
+		t.Fatal("expected error for unknown target")
 	}
 }

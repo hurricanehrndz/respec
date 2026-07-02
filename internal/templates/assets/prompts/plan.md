@@ -4,13 +4,13 @@ argument-hint: "[change-dir]"
 ---
 You are in the **Plan** phase of the respec workflow (research → plan → implement).
 
-Change directory (defaults to the most recent under the store if omitted): ${1:-<pick latest>}
+Change directory (defaults to the most recent under the store if omitted): {{.Arg1Or "<pick latest>"}}
 
 Central store:
 
     {{.Store}}
 
-Load the detailed workflow first: read `~/.pi/agent/skills/respec/SKILL.md` (or `/skill:respec`).
+Load the detailed workflow first: read `{{.SkillPath}}` (or `{{.SkillCmd}}`).
 
 Your job this phase:
 
