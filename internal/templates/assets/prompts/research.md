@@ -20,12 +20,15 @@ gather enough shared context that the plan phase can proceed efficiently. So:
    the questions that code inspection cannot answer, and do not guess on decisions that change
    direction.
 2. **Explore the code** to ground every finding in reality; capture concrete `file:line` references.
-   Read any files the operator names **in full, first**. Then decompose the topic into a few
-   research areas and — when your agent supports subagents — fan them out **in parallel** with
-   distinct roles: *locate* (where the relevant files and components live), *analyze* (how specific
-   code actually works, reading files fully), *find patterns* (how this codebase already solves
-   similar problems). Let subagents do the bulk reading; keep your own context for the interview
-   and the synthesis.{{if .HasProbe}}
+   Read any files the operator names **in full, first**, then work the topic as a few distinct
+   research questions: *where* do the relevant files and components live, *how* does the specific
+   code actually work, and *how* does this codebase already solve similar problems. Explore **in
+   the open, in this session** — do not push the reading into subagents to "save context". This
+   session exists to gather context: the operator steers the exploration live (it is an
+   interview), and everything worth keeping is distilled into `research.md`, the artifact that
+   hands later sessions their context. Your context window is disposable; the artifact is not. If
+   you do run low, record what remains under **Open Questions** and continue in a fresh session
+   that starts from the artifact.{{if .HasProbe}}
    `probe` is installed — prefer it over plain grep-and-read for exploration; it returns whole
    semantic blocks (functions, classes) ranked by relevance, which keeps context small:
 

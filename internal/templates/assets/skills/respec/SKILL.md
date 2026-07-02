@@ -45,6 +45,11 @@ sections.
 
 ## Phases
 
+Run each phase in a **fresh session**. The artifacts are the context handoff: a phase gathers and
+distills context in the open, in its own session, and the next phase reads the artifact instead of
+inheriting a context window polluted with tool output. Do not spawn subagents mid-session for
+context gathering — that trades away the observability and steerability the operator needs.
+
 ### Research (`{{.Cmd "research"}} <topic>`)
 Interview-driven context-building — not neutral documentation. Clarify the topic, explore the code
 (`file:line` refs), weigh options with pros/cons, and record the decisions the operator leans
