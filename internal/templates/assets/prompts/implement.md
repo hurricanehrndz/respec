@@ -25,11 +25,13 @@ When fresh:
 
 1. Read `plan.md` and `spec.md` in the change directory completely.
 2. Execute the plan's phases in order, making the smallest changes that satisfy each phase.
-3. Tick checkboxes in `plan.md` as each phase's automated verification passes.
-4. Pause for manual verification at each phase boundary unless told to run consecutively.
+3. For each phase, run its **Automated Verification** commands and tick those checkboxes in
+   `plan.md` as they pass.
+4. At each phase boundary, stop at the **Manual Verification** items: do not tick them yourself —
+   pause for the operator to confirm, unless told to run consecutively.
 
-The plan is the source of truth. Code changes land in the worked-on repo; plan/spec/research
-edits land only in the central store change directory.
+The plan is the source of truth. Code changes land in the worked-on repo; plan/spec/research edits
+land only in the central store change directory.
 {{if .Context}}
 ## Shared context
 

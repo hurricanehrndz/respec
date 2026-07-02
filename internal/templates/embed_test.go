@@ -64,10 +64,12 @@ func TestRenderOmitsEmptyContextAndRules(t *testing.T) {
 	}
 }
 
-func TestRenderUsesOverrideDir(t *testing.T) {
+func TestRenderLayersOverrideOverEmbedded(t *testing.T) {
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "prompts", "custom.md"), "store={{.Store}} OVERRIDE-MARKER\n")
-	mustWrite(t, filepath.Join(dir, "skills", "respec", "SKILL.md"), "skill {{.Store}}\n")
+	// Override just plan.md and the skill, plus add an override-only prompt.
+	mustWrite(t, filepath.Join(dir, "prompts", "plan.md"), "store={{.Store}} PLAN-OVERRIDE\n")
+	mustWrite(t, filepath.Join(dir, "prompts", "custom.md"), "CUSTOM-ONLY {{.Store}}\n")
+	mustWrite(t, filepath.Join(dir, "skills", "respec", "SKILL.md"), "SKILL-OVERRIDE {{.Store}}\n")
 
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/over"
@@ -77,15 +79,47 @@ func TestRenderUsesOverrideDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
-	c, ok := r.Prompts["custom.md"]
-	if !ok {
-		t.Fatal("override prompt custom.md not rendered")
+
+	// Override wins for plan.md.
+	if !strings.Contains(r.Prompts["plan.md"], "PLAN-OVERRIDE") {
+		t.Errorf("plan.md override not applied: %q", r.Prompts["plan.md"])
 	}
-	if !strings.Contains(c, "OVERRIDE-MARKER") || !strings.Contains(c, "/tmp/over") {
-		t.Errorf("override dir not used / not rendered: %q", c)
+	// Override-only prompt is included.
+	if !strings.Contains(r.Prompts["custom.md"], "CUSTOM-ONLY") {
+		t.Error("override-only custom.md not rendered")
 	}
-	if _, ok := r.Prompts["research.md"]; ok {
-		t.Error("embedded defaults should not be used when templates_dir is set")
+	// Embedded prompts still present (layering, not all-or-nothing).
+	if _, ok := r.Prompts["research.md"]; !ok {
+		t.Error("embedded research.md should still render under layering")
+	}
+	if _, ok := r.Prompts["implement.md"]; !ok {
+		t.Error("embedded implement.md should still render under layering")
+	}
+	// Skill override wins.
+	if !strings.Contains(r.Skills["respec/SKILL.md"], "SKILL-OVERRIDE") {
+		t.Errorf("skill override not applied: %q", r.Skills["respec/SKILL.md"])
+	}
+}
+
+func TestResolveReportsSource(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "prompts", "plan.md"), "x\n")
+	cfg := config.Defaults()
+	cfg.TemplatesDir = dir
+
+	files, err := Resolve(cfg)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	sources := map[string]string{}
+	for _, f := range files {
+		sources[f.Name] = f.Source
+	}
+	if got := sources["prompts/plan.md"]; got != dir {
+		t.Errorf("plan.md source = %q, want override dir %q", got, dir)
+	}
+	if got := sources["prompts/research.md"]; got != EmbeddedSource {
+		t.Errorf("research.md source = %q, want %q", got, EmbeddedSource)
 	}
 }
 

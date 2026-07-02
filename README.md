@@ -2,14 +2,15 @@
 
 `respec` drives a `research → plan → implement` workflow for a single operator.
 All artifacts live in **one central store** (a git repo you own), never in the
-repo you are working on. The actual reasoning is done by
-[pi](https://github.com/earendil-works/pi) executing installed `/rsx:*`
+repo you are working on. The actual reasoning is done by the agent (running in
+[pi](https://github.com/earendil-works/pi)) executing installed `/rsx:*`
 prompt-templates; the `respec` CLI does deterministic plumbing only:
 
 - hold config (store path, optional injected context/rules),
 - render and install the `/rsx:research|plan|implement` prompts + backing skill at user scope,
-- stamp/compare spec→plan staleness (sha256 in frontmatter),
-- reflow prose without touching structure,
+- stamp deterministic frontmatter — provenance (date, repo, git commit) and the
+  spec→plan staleness hash — and auto-reflow the artifacts,
+- validate artifacts (`lint`) and reflow prose without touching structure,
 - render/serve the store as a browsable Hugo site.
 
 ## Setup
@@ -31,16 +32,18 @@ again after changing config.
 
 ## Workflow
 
-From any repo, in a pi session:
+From any repo, in an agent session:
 
-1. `/rsx:research <topic>` — explores and writes a provenance-stamped `research.md` into
-   `<store>/<problem-space>/<YYYY-MM-DD-slug>/`.
-2. `/rsx:plan` — reads the research, co-generates `spec.md` + `plan.md` in the same change dir,
-   then runs `respec stamp` to record the spec's hash. If a plan already exists and the spec
-   changed, it amends the plan surgically instead of regenerating.
+1. `/rsx:research <topic>` — an interview-driven exploration that writes `research.md` into
+   `<store>/<problem-space>/<YYYY-MM-DD-slug>/`, then runs `respec stamp` to fill provenance
+   (date, repo, git commit).
+2. `/rsx:plan` — reads the research, co-generates `spec.md` + `plan.md` in the same change dir
+   (phased plan with per-phase Automated/Manual verification), then runs `respec stamp` to record
+   the spec's hash. If a plan already exists and the spec changed, it amends the plan surgically
+   instead of regenerating.
 3. `/rsx:implement` — first runs `respec status --json`; if the spec changed since the plan was
    stamped (`stale`), it stops and tells you to re-plan. Otherwise it executes the plan's phases,
-   ticking checkboxes in `plan.md`.
+   ticking Automated checkboxes as they pass and pausing at each phase's Manual checks.
 
 Nothing is ever written to the repo you invoke from.
 
@@ -51,11 +54,20 @@ Nothing is ever written to the repo you invoke from.
 | `respec config get\|set <key> [value]` | Read/write `~/.config/respec/config.yaml` |
 | `respec config path` | Print the config file path |
 | `respec install` | Render + install the `/rsx:*` prompts and skill at user scope |
-| `respec stamp <change-dir>` | Record `spec.md`'s sha256 in `plan.md` frontmatter |
-| `respec status <change-dir> [--json]` | Report `fresh` / `stale` / `unstamped` |
-| `respec format <file> [--check]` | Reflow prose to `reflow_width`; non-prose stays byte-identical |
+| `respec stamp <change-dir> [--repo <path>]` | Write provenance + `spec_sha256` into the artifacts, then reflow them |
+| `respec status <change-dir> [--json]` | Report `fresh` / `stale` / `unstamped` plus per-artifact status |
+| `respec lint <change-dir> [--json]` | Validate frontmatter fields, `status` values, and required sections |
+| `respec format <path> [--check]` | Reflow prose in a file or every `*.md` under a dir; non-prose stays byte-identical |
+| `respec templates list\|eject [name]` | Inspect templates / copy embedded defaults into `templates_dir` |
+| `respec install-hook [--force]` | Install a store pre-commit hook that checks Markdown formatting |
 | `respec render [--out <dir>]` | Build the store as a Hugo site (default `<cache>/respec/site/public`) |
 | `respec serve [--port N] [--bind ADDR]` | Serve the store with live reload |
+
+`respec stamp` owns the deterministic frontmatter the agent should never
+hand-write: provenance (`date`, `repo`, `repo_path`, `git_commit`, read from the
+worked-on repo and written **write-once** into `research.md`/`spec.md`) plus
+`spec_sha256` (refreshed into `plan.md`). It reflows each artifact it touches.
+`respec lint` then checks required fields, `status` values, and sections.
 
 Staleness is asymmetric by design: only spec→plan is tracked, so editing
 `plan.md` (e.g. ticking checkboxes during implementation) never marks anything
@@ -75,7 +87,8 @@ URLs are never split across lines.
 ```yaml
 store: ~/respec-store   # central store path
 reflow_width: 80        # prose reflow width for `respec format`
-templates_dir: ""       # optional dir of prompt-template overrides; empty = embedded defaults
+templates_dir: ""       # optional override dir, layered per-file over the embedded defaults
+                        # (override one prompt without re-supplying the rest); empty = embedded
 context: ""             # optional shared context injected into every prompt
 rules:                  # optional per-artifact rules injected into the matching prompt
   research: ""
@@ -111,8 +124,9 @@ respec status "$CHANGE"                   # fresh
 echo change >> "$CHANGE/spec.md"
 respec status "$CHANGE"                   # stale → /rsx:implement refuses to proceed
 
-# 5. format + browse
-respec format "$CHANGE/plan.md"
+# 5. validate, format + browse
+respec lint "$CHANGE"                      # frontmatter/status/sections OK
+respec format "$CHANGE"                    # reflow every *.md in the change dir
 respec serve                              # http://127.0.0.1:1313
 ```
 

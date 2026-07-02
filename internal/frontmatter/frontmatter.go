@@ -45,6 +45,20 @@ func split(data []byte) (fm, body []byte, has bool) {
 	}
 }
 
+// Body returns the document body with any leading frontmatter block removed.
+// When no frontmatter is present the whole input is the body.
+func Body(data []byte) []byte {
+	_, body, _ := split(data)
+	return body
+}
+
+// Raw returns the inner YAML frontmatter bytes (without the --- delimiter
+// lines) and whether a frontmatter block was present.
+func Raw(data []byte) ([]byte, bool) {
+	fm, _, has := split(data)
+	return fm, has
+}
+
 // GetString returns the string value of key from the frontmatter and whether it
 // was present.
 func GetString(data []byte, key string) (string, bool, error) {
@@ -63,10 +77,24 @@ func GetString(data []byte, key string) (string, bool, error) {
 	return fmt.Sprintf("%v", v), true, nil
 }
 
+// KV is a frontmatter key/value pair for SetMany.
+type KV struct {
+	Key   string
+	Value string
+}
+
 // SetString sets key to value in the document's frontmatter and returns the new
 // document bytes. The body is preserved byte-for-byte. When no frontmatter
 // exists, one is created and the original content becomes the body.
 func SetString(data []byte, key, value string) ([]byte, error) {
+	return SetMany(data, []KV{{Key: key, Value: value}})
+}
+
+// SetMany sets each pair's key to its value in a single order-preserving pass,
+// returning the new document bytes. Existing keys are updated in place; new keys
+// are appended in the order given. The body is preserved byte-for-byte, and
+// frontmatter is created when absent (the original content becomes the body).
+func SetMany(data []byte, kvs []KV) ([]byte, error) {
 	fm, body, has := split(data)
 
 	mapping := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
@@ -80,7 +108,9 @@ func SetString(data []byte, key, value string) ([]byte, error) {
 		}
 	}
 
-	setMapKey(mapping, key, value)
+	for _, kv := range kvs {
+		setMapKey(mapping, kv.Key, kv.Value)
+	}
 
 	marshaled, err := yaml.Marshal(mapping)
 	if err != nil {

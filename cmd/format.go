@@ -3,7 +3,10 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/hurricanehrndz/respec/internal/config"
 	"github.com/hurricanehrndz/respec/internal/formatter"
@@ -13,35 +16,76 @@ import (
 func init() {
 	var check bool
 	cmd := &cobra.Command{
-		Use:   "format <file>",
+		Use:   "format <path>",
 		Short: "Reflow prose to the configured width, leaving non-prose byte-identical",
-		Args:  cobra.ExactArgs(1),
+		Long: `Reflow prose in a Markdown file, or in every *.md file under a directory
+(recursively), leaving tables, fenced code, headings, inline HTML, and bare
+URLs byte-identical.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			cfg, err := config.Load()
 			if err != nil {
 				return err
 			}
-			path := args[0]
-			src, err := os.ReadFile(path)
+			files, err := markdownTargets(args[0])
 			if err != nil {
 				return err
 			}
-			out := formatter.Format(src, cfg.ReflowWidth)
+
+			var unformatted []string
+			for _, path := range files {
+				src, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+				out := formatter.Format(src, cfg.ReflowWidth)
+				if bytes.Equal(src, out) {
+					continue
+				}
+				if check {
+					unformatted = append(unformatted, path)
+					continue
+				}
+				if err := os.WriteFile(path, out, 0o644); err != nil {
+					return err
+				}
+			}
 
 			if check {
-				if !bytes.Equal(src, out) {
+				if len(unformatted) > 0 {
 					c.SilenceUsage = true
-					return fmt.Errorf("%s is not formatted", path)
+					return fmt.Errorf("%d file(s) not formatted:\n  %s",
+						len(unformatted), strings.Join(unformatted, "\n  "))
 				}
 				_, err = fmt.Fprintln(c.OutOrStdout(), "formatted")
 				return err
 			}
-			if bytes.Equal(src, out) {
-				return nil
-			}
-			return os.WriteFile(path, out, 0o644)
+			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&check, "check", false, "report whether the file is already formatted without writing")
+	cmd.Flags().BoolVar(&check, "check", false, "report whether files are already formatted without writing")
 	rootCmd.AddCommand(cmd)
+}
+
+// markdownTargets returns the file(s) to format: path itself when it is a file,
+// or every *.md file beneath it (recursively) when it is a directory.
+func markdownTargets(path string) ([]string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return []string{path}, nil
+	}
+	var files []string
+	err = filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(p, ".md") {
+			files = append(files, p)
+		}
+		return nil
+	})
+	return files, err
 }
