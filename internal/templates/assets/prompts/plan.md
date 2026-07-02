@@ -80,6 +80,12 @@ needed; each phase pauses at its Manual checks before the next begins.
 **Phase**, **Automated Verification**, and **Manual Verification** (plan) verbatim — keep those
 names even when customizing this template.
 
+Both artifacts are read by a **human co-engineer** who participates in the effort, not just by the
+implementing agent. Mermaid diagrams (fenced ` ```mermaid ` blocks) are strongly encouraged where
+they beat prose — architecture sketches in the spec, phase/dependency flow in the plan. GitHub and
+`respec render`/`serve` both render them, and diagrams-as-text diff cleanly. Inline HTML is also
+fine when it adds value; the store render preserves it.
+
 Write only into the central store change directory. Nothing goes into the worked-on repo.
 {{if .Context}}
 ## Shared context

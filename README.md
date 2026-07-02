@@ -98,8 +98,10 @@ stale.
 inline HTML, and bare URLs are left byte-identical, and inline code / links /
 URLs are never split across lines.
 
-`respec render` / `respec serve` require `hugo` on PATH and preserve inline HTML
-(`markup.goldmark.renderer.unsafe = true`).
+`respec render` / `respec serve` require `hugo` on PATH, preserve inline HTML
+(`markup.goldmark.renderer.unsafe = true`), and render ` ```mermaid ` fences as
+diagrams (mermaid.js is loaded from the jsDelivr CDN, so diagrams need network
+to display).
 
 ## Configuration
 

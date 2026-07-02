@@ -23,7 +23,7 @@ func setupStore(t *testing.T) (home, store, out string) {
 	if err := os.MkdirAll(changeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	artifact := "---\ntitle: Demo Spec\n---\n# Demo\n\nInline <span class=\"flag\">HTML</span> here.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n"
+	artifact := "---\ntitle: Demo Spec\n---\n# Demo\n\nInline <span class=\"flag\">HTML</span> here.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n```mermaid\ngraph TD\n  A[spec] --> B[plan]\n```\n"
 	if err := os.WriteFile(filepath.Join(changeDir, "spec.md"), []byte(artifact), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -61,6 +61,42 @@ func TestRenderPreservesInlineHTMLAndTables(t *testing.T) {
 	}
 	if !strings.Contains(html, "<table>") {
 		t.Errorf("GFM table not rendered as <table>:\n%s", html)
+	}
+}
+
+func TestRenderMermaidDiagrams(t *testing.T) {
+	// Artifacts are written for a human co-engineer; Mermaid diagrams in them
+	// must actually display when the store is browsed, not fall back to a
+	// plain code block.
+	if _, err := exec.LookPath("hugo"); err != nil {
+		t.Skip("hugo not on PATH; skipping render integration test")
+	}
+	_, _, out := setupStore(t)
+
+	runRespec(t, "render", "--out", out)
+
+	var html string
+	err := filepath.Walk(out, func(p string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.HasSuffix(p, ".html") {
+			return err
+		}
+		b, _ := os.ReadFile(p)
+		if strings.Contains(string(b), "graph TD") {
+			html = string(b)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if html == "" {
+		t.Fatal("no rendered page containing the mermaid diagram found")
+	}
+	if !strings.Contains(html, `<pre class="mermaid">`) {
+		t.Errorf("mermaid fence not rendered via the codeblock hook:\n%s", html)
+	}
+	if !strings.Contains(html, "mermaid.esm.min.mjs") {
+		t.Errorf("mermaid.js include missing from page with a diagram:\n%s", html)
 	}
 }
 

@@ -70,6 +70,11 @@ Body skeleton:
 `respec lint` validates the section headings **Research Question**, **Summary**, **Findings**, and
 **Open Questions** verbatim — keep those names even when customizing this template.
 
+Write for a **human co-engineer**, not just for agent execution. Where structure, flow, or
+sequencing is easier to see than to read, use a Mermaid diagram (a fenced ` ```mermaid ` block) —
+GitHub and `respec render`/`serve` both render them, and diagrams-as-text diff cleanly. Inline HTML
+is also fine when it adds value; the store render preserves it.
+
 When the document is written, stamp it (fills provenance, reflows prose):
 
     respec stamp <change-dir>

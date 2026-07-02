@@ -93,6 +93,8 @@ the current spec.
 
 ## Hard rules
 
+- Artifacts are for a human co-engineer as much as for you: prefer Mermaid diagrams (rendered by
+  GitHub and `respec render`/`serve`) and inline HTML where they communicate better than prose.
 - Never write research/spec/plan artifacts into the worked-on repo — only into the central store.
 - Never hand-compute provenance or hashes; run `respec stamp`.
 - The plan is the source of truth during implementation.
