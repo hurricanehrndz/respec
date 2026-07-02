@@ -54,13 +54,15 @@ type Spec struct {
 	body   []byte
 }
 
-// Plan is the typed frontmatter of plan.md. The agent writes title and status;
-// respec stamp fills spec_sha256.
+// Plan is the typed frontmatter of plan.md. The agent writes title, status, and
+// optional depends_on (slugs of efforts that must finish first); respec stamp
+// fills spec_sha256.
 type Plan struct {
-	Title   string `yaml:"title"`
-	Status  string `yaml:"status"`
-	SpecSHA string `yaml:"spec_sha256"`
-	body    []byte
+	Title     string   `yaml:"title"`
+	Status    string   `yaml:"status"`
+	SpecSHA   string   `yaml:"spec_sha256"`
+	DependsOn []string `yaml:"depends_on"`
+	body      []byte
 }
 
 // Artifact is the common contract: report validation problems (empty = valid).

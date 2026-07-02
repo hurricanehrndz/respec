@@ -16,13 +16,19 @@ site rendering. Never compute `date`, git metadata, or hashes by hand — `respe
 
 ## Store layout
 
-    {{.Store}}/<problem-space>/<YYYY-MM-DD-slug>/
+    {{.Store}}/<owner-repo>/<slug>/
         research.md   # interview-driven findings + decisions
         spec.md       # requirements / desired behavior
         plan.md       # phased implementation + checkboxes
 
-A `<problem-space>/<YYYY-MM-DD-slug>/` directory is one "change". `spec.md` and `plan.md` are
-siblings.
+A `<owner-repo>/<slug>/` directory is one "change" (effort). Efforts are grouped by the primary
+repo they affect; `slug` is the effort's identity within that repo. `spec.md` and `plan.md` are
+siblings. The effort date lives in frontmatter, not the path.
+
+`<owner-repo>` is derived from the worked-on repo's `origin` remote: the last two path segments
+(`owner/repo`, `.git` stripped) slugified — e.g. `git@github.com:hurricanehrndz/respec.git` →
+`hurricanehrndz-respec` (basename if there is no origin). Run `respec list` before creating a new
+effort; if the slug already exists for the repo, ask whether it is a new version (`<slug>-v2`).
 
 ## Frontmatter schema
 
@@ -32,7 +38,7 @@ You write the human fields; `respec stamp` fills the deterministic ones.
 | --- | --- | --- |
 | research.md | `topic`, `status` (draft\|complete), `tags` | `date`, `repo`, `repo_path`, `git_commit` (write-once) |
 | spec.md | `title`, `status` (draft\|approved), `tags` | `date` (write-once) |
-| plan.md | `title`, `status` (draft\|approved\|in-progress\|done) | `spec_sha256` (refreshed) |
+| plan.md | `title`, `status` (draft\|approved\|in-progress\|done), optional `depends_on` | `spec_sha256` (refreshed) |
 
 `respec lint <change-dir>` validates these fields, the `status` values, and the required body
 sections.
@@ -77,6 +83,7 @@ the current spec.
     respec install                       # (re)install these prompts + this skill at user scope
     respec stamp <change-dir>            # write provenance + spec_sha256, then reflow the artifacts
     respec status <change-dir> [--json]  # per-artifact status + fresh | stale | unstamped
+    respec list [--json]                 # every effort in the store, grouped by repo, with staleness
     respec lint <change-dir> [--json]    # validate frontmatter, status, and required sections
     respec format <path> [--check]       # reflow prose only; non-prose left byte-identical
     respec templates list|eject          # inspect / customize the /rsx:* prompts + skill

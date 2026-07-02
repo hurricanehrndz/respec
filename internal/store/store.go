@@ -1,6 +1,7 @@
 // Package store resolves paths within the central respec store: change
-// directories (<store>/<problem-space>/<YYYY-MM-DD-slug>/) and the sibling
-// artifact files within them.
+// directories (<store>/<repo>/<slug>/) and the sibling artifact files within
+// them. A change is grouped under its primary repo (an owner-repo slug) and
+// identified by its slug; the effort date lives in frontmatter, not the path.
 package store
 
 import (
@@ -10,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"time"
 )
 
 const (
@@ -20,6 +20,50 @@ const (
 )
 
 var slugRe = regexp.MustCompile(`[^a-z0-9]+`)
+
+// Change identifies one effort in the store. Slug is the effort's identity
+// within its repo (and doubles as a same-repo depends_on reference; cross-repo
+// references are "repo/slug").
+type Change struct {
+	Repo string
+	Slug string
+	Dir  string
+}
+
+// Changes walks the store rooted at root and returns every change directory
+// (a <repo>/<slug>/ dir containing a plan.md). A missing store yields no
+// changes (not an error).
+func Changes(root string) ([]Change, error) {
+	repos, err := os.ReadDir(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var out []Change
+	for _, repo := range repos {
+		if !repo.IsDir() {
+			continue
+		}
+		repoDir := filepath.Join(root, repo.Name())
+		entries, err := os.ReadDir(repoDir)
+		if err != nil {
+			return nil, err
+		}
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			dir := filepath.Join(repoDir, e.Name())
+			if _, err := os.Stat(PlanPath(dir)); err != nil {
+				continue // only directories that are real changes
+			}
+			out = append(out, Change{Repo: repo.Name(), Slug: e.Name(), Dir: dir})
+		}
+	}
+	return out, nil
+}
 
 // Store is rooted at an (already ~-expanded) absolute store path.
 type Store struct {
@@ -58,12 +102,10 @@ func trimHyphen(s string) string {
 	return s
 }
 
-// ChangeDir builds a change-dir path under the store for the given problem
-// space and slug, dated with the supplied time:
-// <store>/<problem-space>/<YYYY-MM-DD-slug>/.
-func (s Store) ChangeDir(problemSpace, slug string, date time.Time) string {
-	dated := fmt.Sprintf("%s-%s", date.Format("2006-01-02"), Slugify(slug))
-	return filepath.Join(s.Root, Slugify(problemSpace), dated)
+// ChangeDir builds a change-dir path under the store for the given repo (an
+// already-canonical owner-repo slug) and effort slug: <store>/<repo>/<slug>/.
+func (s Store) ChangeDir(repo, slug string) string {
+	return filepath.Join(s.Root, repo, Slugify(slug))
 }
 
 // SpecPath returns the spec.md path inside a change dir.

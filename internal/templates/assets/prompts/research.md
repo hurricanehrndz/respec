@@ -25,12 +25,25 @@ gather enough shared context that the plan phase can proceed efficiently. So:
 4. **Record decisions.** When the operator leans toward an approach, write it down with the
    reasoning so the plan phase treats it as a settled constraint.
 
-Choose a problem-space name and a short slug, then create the change directory
-`{{.Store}}/<problem-space>/<YYYY-MM-DD-slug>/` and write `research.md` there.
+Create the change directory under the store, grouped by the **primary repo** you are working in
+and named by a short slug:
 
-Frontmatter you write: `topic`, `status` (`draft` until the interview settles, then `complete`),
-and optional `tags`. **Do not** run `git` or `date` or hand-write provenance — `respec stamp` fills
-`date`, `repo`, `repo_path`, and `git_commit` for you.
+    {{.Store}}/<owner-repo>/<slug>/
+
+Derive `<owner-repo>` from the worked-on repo's `origin` remote so every effort for the same repo
+lands together: take the last two path segments (`owner/repo`), drop a trailing `.git`, then
+slugify (lowercase, runs of non-alphanumerics → hyphens). Examples: `git@github.com:hurricanehrndz/respec.git`
+→ `hurricanehrndz-respec`; `https://github.com/Acme/Web-App.git` → `acme-web-app`. With no `origin`,
+use the repository directory's basename. This is the one git value you read yourself (just to name
+the directory) — everything else is stamped.
+
+Before creating it, run `respec list` and check for an existing effort with the same slug **for this
+repo**. If one exists, ask the operator whether this is a new version; if so, use a distinct slug
+like `<slug>-v2` (two efforts for one repo cannot share a slug).
+
+Then write `research.md` in that directory. Frontmatter you write: `topic`, `status` (`draft` until
+the interview settles, then `complete`), and optional `tags`. **Do not** hand-write the provenance
+fields — `respec stamp` fills `date`, `repo`, `repo_path`, and `git_commit` for you.
 
 Body skeleton:
 
@@ -53,6 +66,9 @@ Body skeleton:
 
     ## Open Questions
     <anything still unresolved after the interview>
+
+`respec lint` validates the section headings **Research Question**, **Summary**, **Findings**, and
+**Open Questions** verbatim — keep those names even when customizing this template.
 
 When the document is written, stamp it (fills provenance, reflows prose):
 

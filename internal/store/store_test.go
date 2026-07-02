@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 )
 
 func TestSlugify(t *testing.T) {
@@ -23,11 +22,58 @@ func TestSlugify(t *testing.T) {
 
 func TestChangeDir(t *testing.T) {
 	s := New("/root/store")
-	date := time.Date(2026, 6, 25, 0, 0, 0, 0, time.UTC)
-	got := s.ChangeDir("Auth System", "Add OAuth Login", date)
-	want := filepath.Join("/root/store", "auth-system", "2026-06-25-add-oauth-login")
+	got := s.ChangeDir("hurricanehrndz-respec", "Add OAuth Login")
+	want := filepath.Join("/root/store", "hurricanehrndz-respec", "add-oauth-login")
 	if got != want {
 		t.Errorf("ChangeDir = %q, want %q", got, want)
+	}
+}
+
+func TestChanges(t *testing.T) {
+	root := t.TempDir()
+	// Two efforts under one repo, one under another; plus noise to ignore.
+	mk := func(repo, slug string, withPlan bool) {
+		dir := filepath.Join(root, repo, slug)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if withPlan {
+			if err := os.WriteFile(PlanPath(dir), []byte("# plan\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	mk("hurricanehrndz-respec", "token-rotation", true)
+	mk("hurricanehrndz-respec", "typeahead", true)
+	mk("acme-billing", "proration", true)
+	mk("hurricanehrndz-respec", "no-plan-yet", false) // skipped: no plan.md
+
+	changes, err := Changes(root)
+	if err != nil {
+		t.Fatalf("Changes: %v", err)
+	}
+	got := map[string]string{} // slug -> repo
+	for _, c := range changes {
+		got[c.Slug] = c.Repo
+	}
+	if len(got) != 3 {
+		t.Fatalf("got %d changes, want 3: %+v", len(got), changes)
+	}
+	if got["token-rotation"] != "hurricanehrndz-respec" || got["proration"] != "acme-billing" {
+		t.Errorf("unexpected grouping: %+v", got)
+	}
+	if _, ok := got["no-plan-yet"]; ok {
+		t.Error("dir without plan.md should be skipped")
+	}
+}
+
+func TestChangesMissingStore(t *testing.T) {
+	changes, err := Changes(filepath.Join(t.TempDir(), "nope"))
+	if err != nil {
+		t.Fatalf("missing store should not error: %v", err)
+	}
+	if len(changes) != 0 {
+		t.Errorf("want no changes, got %+v", changes)
 	}
 }
 

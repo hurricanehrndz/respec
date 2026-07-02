@@ -35,8 +35,8 @@ again after changing config.
 From any repo, in an agent session:
 
 1. `/rsx:research <topic>` — an interview-driven exploration that writes `research.md` into
-   `<store>/<problem-space>/<YYYY-MM-DD-slug>/`, then runs `respec stamp` to fill provenance
-   (date, repo, git commit).
+   `<store>/<owner-repo>/<slug>/` (efforts are grouped by the primary repo they affect), then runs
+   `respec stamp` to fill provenance (date, repo, git commit).
 2. `/rsx:plan` — reads the research, co-generates `spec.md` + `plan.md` in the same change dir
    (phased plan with per-phase Automated/Manual verification), then runs `respec stamp` to record
    the spec's hash. If a plan already exists and the spec changed, it amends the plan surgically
@@ -56,6 +56,7 @@ Nothing is ever written to the repo you invoke from.
 | `respec install` | Render + install the `/rsx:*` prompts and skill at user scope |
 | `respec stamp <change-dir> [--repo <path>]` | Write provenance + `spec_sha256` into the artifacts, then reflow them |
 | `respec status <change-dir> [--json]` | Report `fresh` / `stale` / `unstamped` plus per-artifact status |
+| `respec list [--json]` | List every effort in the store, grouped by repo, with status/staleness |
 | `respec lint <change-dir> [--json]` | Validate frontmatter fields, `status` values, and required sections |
 | `respec format <path> [--check]` | Reflow prose in a file or every `*.md` under a dir; non-prose stays byte-identical |
 | `respec templates list\|eject [name]` | Inspect templates / copy embedded defaults into `templates_dir` |
@@ -68,6 +69,13 @@ hand-write: provenance (`date`, `repo`, `repo_path`, `git_commit`, read from the
 worked-on repo and written **write-once** into `research.md`/`spec.md`) plus
 `spec_sha256` (refreshed into `plan.md`). It reflows each artifact it touches.
 `respec lint` then checks required fields, `status` values, and sections.
+
+Efforts live at `<store>/<owner-repo>/<slug>/` — grouped by the primary repo,
+identified by `slug` (the date is in frontmatter, not the path). `respec list`
+gives a store-wide overview. A plan may declare `depends_on` (a bare `slug` for
+the same repo, or `repo/slug` cross-repo); `respec list` shows a dependent as
+`(blocked)` until its dependencies reach `status: done`. This is for visibility —
+respec does not orchestrate or auto-run efforts.
 
 Staleness is asymmetric by design: only spec→plan is tracked, so editing
 `plan.md` (e.g. ticking checkboxes during implementation) never marks anything

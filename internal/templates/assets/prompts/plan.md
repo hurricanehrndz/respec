@@ -26,8 +26,9 @@ Your job this phase:
        respec stamp <change-dir>
 
 Frontmatter you write: `spec.md` → `title`, `status` (`draft`|`approved`), optional `tags`;
-`plan.md` → `title`, `status` (`draft`|`approved`|`in-progress`|`done`). `respec stamp` fills
-`spec.md`'s `date` and `plan.md`'s `spec_sha256` — do not write those by hand.
+`plan.md` → `title`, `status` (`draft`|`approved`|`in-progress`|`done`), and optional `depends_on`
+(efforts that must finish first — a bare slug for the same repo, or `repo/slug` cross-repo).
+`respec stamp` fills `spec.md`'s `date` and `plan.md`'s `spec_sha256` — do not write those by hand.
 
 `spec.md` skeleton:
 
@@ -74,6 +75,10 @@ Frontmatter you write: `spec.md` → `title`, `status` (`draft`|`approved`), opt
 Split verification deliberately: **Automated** = commands the implementer can run and tick off
 itself; **Manual** = judgment calls that gate the phase and need the operator. Add more phases as
 needed; each phase pauses at its Manual checks before the next begins.
+
+`respec lint` validates the headings **Requirements** (spec), **Overview**, at least one
+**Phase**, **Automated Verification**, and **Manual Verification** (plan) verbatim — keep those
+names even when customizing this template.
 
 Write only into the central store change directory. Nothing goes into the worked-on repo.
 {{if .Context}}
