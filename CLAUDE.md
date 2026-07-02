@@ -31,6 +31,14 @@ directories and weakening bare-slug `depends_on` resolution. If that drift
 becomes a real problem, the fix is a canonical `RepoSlug()` in
 `internal/gitmeta` surfaced to the agent — not more prompt prose.
 
+## Design provenance
+
+The prompt-template structure derives from the RPI (Research → Plan →
+Implement) Goose recipes kept as unmodified reference in
+`docs/external/rpi-recipes/` (see its README for origin and where respec
+deliberately deviates). Consult them when iterating on
+`internal/templates/assets/`.
+
 ## Layout invariants
 
 - Store: `<store>/<owner-repo>/<slug>/` with `research.md`, `spec.md`,
