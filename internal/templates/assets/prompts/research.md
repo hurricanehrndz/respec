@@ -22,13 +22,16 @@ gather enough shared context that the plan phase can proceed efficiently. So:
 2. **Explore the code** to ground every finding in reality; capture concrete `file:line` references.
    Read any files the operator names **in full, first**, then work the topic as a few distinct
    research questions: *where* do the relevant files and components live, *how* does the specific
-   code actually work, and *how* does this codebase already solve similar problems. Explore **in
-   the open, in this session** — do not push the reading into subagents to "save context". This
-   session exists to gather context: the operator steers the exploration live (it is an
+   code actually work, and *how* does this codebase already solve similar problems. **Default to
+   exploring in the open, in this session** — the operator steers the exploration live (it is an
    interview), and everything worth keeping is distilled into `research.md`, the artifact that
-   hands later sessions their context. Your context window is disposable; the artifact is not. If
-   you do run low, record what remains under **Open Questions** and continue in a fresh session
-   that starts from the artifact.{{if .HasProbe}}
+   hands later sessions their context. Your context window is disposable; the artifact is not.
+   Before reaching for subagents, gauge the scale (count and size the relevant files/dirs): only
+   when the codebase is large enough that the bulk reading would drown this session, delegate the
+   bulk reads — and keep the interview and synthesis here either way. An agent without a subagent
+   feature can spawn a fresh instance of itself via the shell. If you run low on context, record
+   what remains under **Open Questions** and continue in a fresh session that starts from the
+   artifact.{{if .HasProbe}}
    `probe` is installed — prefer it over plain grep-and-read for exploration; it returns whole
    semantic blocks (functions, classes) ranked by relevance, which keeps context small:
 

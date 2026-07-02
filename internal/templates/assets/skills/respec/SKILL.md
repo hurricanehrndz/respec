@@ -47,8 +47,10 @@ sections.
 
 Run each phase in a **fresh session**. The artifacts are the context handoff: a phase gathers and
 distills context in the open, in its own session, and the next phase reads the artifact instead of
-inheriting a context window polluted with tool output. Do not spawn subagents mid-session for
-context gathering — that trades away the observability and steerability the operator needs.
+inheriting a context window polluted with tool output. Default to **no subagents** for context
+gathering — they cost the operator observability and steerability. Let codebase size direct you:
+delegate bulk reads only when they would drown the session. An agent without a subagent feature
+can spawn a fresh instance of itself via the shell.
 
 ### Research (`{{.Cmd "research"}} <topic>`)
 Interview-driven context-building — not neutral documentation. Clarify the topic, explore the code
