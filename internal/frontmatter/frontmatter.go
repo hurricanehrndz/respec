@@ -71,8 +71,10 @@ func GetString(data []byte, key string) (string, bool, error) {
 		return "", false, fmt.Errorf("parsing frontmatter: %w", err)
 	}
 	v, ok := m[key]
-	if !ok {
-		return "", false, nil
+	if !ok || v == nil {
+		// A key with a null value ("date:") is present but empty — report it
+		// as such rather than stringifying nil to "<nil>".
+		return "", ok, nil
 	}
 	return fmt.Sprintf("%v", v), true, nil
 }

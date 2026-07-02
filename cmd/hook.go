@@ -15,12 +15,23 @@ import (
 const hookMarker = "# respec-managed pre-commit hook"
 
 const preCommitHook = hookMarker + `
-# Verifies staged Markdown is reflowed before commit. Regenerate with: respec install-hook
-files=$(git diff --cached --name-only --diff-filter=ACM -- '*.md')
-[ -z "$files" ] && exit 0
+# Verifies STAGED Markdown (the blobs being committed, not the working tree)
+# is reflowed before commit. Regenerate with: respec install-hook
+tmp=$(mktemp) || exit 1
+trap 'rm -f "$tmp"' 0
 fail=0
-for f in $files; do
-  respec format --check "$f" >/dev/null 2>&1 || { echo "not formatted: $f" >&2; fail=1; }
+IFS='
+'
+for f in $(git diff --cached --name-only --diff-filter=ACM -- '*.md'); do
+  if ! git show ":$f" > "$tmp" 2>/dev/null; then
+    echo "cannot read staged $f" >&2
+    fail=1
+    continue
+  fi
+  if ! respec format --check "$tmp" >/dev/null 2>&1; then
+    echo "not formatted: $f" >&2
+    fail=1
+  fi
 done
 if [ "$fail" -ne 0 ]; then
   echo "run: respec format <file> (or 'respec format .') then re-stage" >&2

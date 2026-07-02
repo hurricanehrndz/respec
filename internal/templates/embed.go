@@ -102,6 +102,13 @@ func Resolve(cfg config.Config) ([]TemplateFile, error) {
 	}
 	if cfg.TemplatesDir != "" {
 		dir := config.Expand(cfg.TemplatesDir)
+		// A missing override dir is a misconfiguration, not "no overrides" —
+		// fail loud instead of silently falling back to embedded defaults.
+		if info, err := os.Stat(dir); err != nil {
+			return nil, fmt.Errorf("templates_dir %q: %w", dir, err)
+		} else if !info.IsDir() {
+			return nil, fmt.Errorf("templates_dir %q is not a directory", dir)
+		}
 		if err := collect(os.DirFS(dir), dir); err != nil {
 			return nil, err
 		}

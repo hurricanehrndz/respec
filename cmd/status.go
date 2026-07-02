@@ -15,6 +15,7 @@ type artifactStatus struct {
 	Artifact string `json:"artifact"`
 	Present  bool   `json:"present"`
 	Status   string `json:"status,omitempty"`
+	Error    string `json:"error,omitempty"`
 }
 
 type statusResult struct {
@@ -84,14 +85,17 @@ func artifactStatuses(changeDir string) []artifactStatus {
 	out := make([]artifactStatus, 0, len(targets))
 	for _, t := range targets {
 		as := artifactStatus{Artifact: t.name}
-		if data, err := os.ReadFile(t.path); err == nil {
+		switch data, err := os.ReadFile(t.path); {
+		case err == nil:
 			as.Present = true
-			if s, ok, gerr := frontmatter.GetString(data, "status"); gerr == nil && ok {
+			if s, ok, gerr := frontmatter.GetString(data, "status"); gerr != nil {
+				as.Error = gerr.Error()
+			} else if ok {
 				as.Status = s
 			}
-		} else if !errors.Is(err, os.ErrNotExist) {
-			// Unreadable-for-another-reason: leave Present=false; status/lint surface details.
-			continue
+		case !errors.Is(err, os.ErrNotExist):
+			// Unreadable-for-another-reason: report it, never drop the entry.
+			as.Error = err.Error()
 		}
 		out = append(out, as)
 	}
@@ -103,15 +107,18 @@ func artifactStatuses(changeDir string) []artifactStatus {
 func plainStatus(res statusResult) string {
 	out := res.State + "\n"
 	for _, a := range res.Artifacts {
-		if !a.Present {
+		switch {
+		case a.Error != "":
+			out += fmt.Sprintf("  %-12s error: %s\n", a.Artifact, a.Error)
+		case !a.Present:
 			out += fmt.Sprintf("  %-12s absent\n", a.Artifact)
-			continue
+		default:
+			st := a.Status
+			if st == "" {
+				st = "-"
+			}
+			out += fmt.Sprintf("  %-12s present (%s)\n", a.Artifact, st)
 		}
-		st := a.Status
-		if st == "" {
-			st = "-"
-		}
-		out += fmt.Sprintf("  %-12s present (%s)\n", a.Artifact, st)
 	}
 	return out
 }

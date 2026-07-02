@@ -19,7 +19,7 @@ func initGitRepo(t *testing.T) string {
 		t.Fatal(err)
 	}
 	git(t, dir, "add", "f.txt")
-	git(t, dir, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "one")
+	git(t, dir, "-c", "user.email=t@t", "-c", "user.name=t", "-c", "commit.gpgsign=false", "commit", "-m", "one")
 	return dir
 }
 
@@ -76,7 +76,7 @@ func TestStampWritesProvenanceWriteOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	git(t, repo, "add", "g.txt")
-	git(t, repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "two")
+	git(t, repo, "-c", "user.email=t@t", "-c", "user.name=t", "-c", "commit.gpgsign=false", "commit", "-m", "two")
 
 	runRespec(t, "stamp", dir, "--repo", repo)
 	if commit2 := fm(t, rp, "git_commit"); commit2 != commit1 {
@@ -84,19 +84,57 @@ func TestStampWritesProvenanceWriteOnce(t *testing.T) {
 	}
 }
 
-func TestStampNonGitRepoWarnsButStamps(t *testing.T) {
+func TestStampNonGitRepoFailsLoud(t *testing.T) {
+	// respec's provenance model is git-based; lint requires repo/git_commit,
+	// so silently skipping them would dead-end the workflow. Stamp must error.
 	nonRepo := t.TempDir() // not a git repo
 	dir := fixtureChange(t, "spec\n", "---\n---\n# Plan\n")
 	research := "---\ntopic: t\n---\n# R\n"
 	if err := os.WriteFile(store.ResearchPath(dir), []byte(research), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Should not error; date is still stamped, git fields skipped.
-	runRespec(t, "stamp", dir, "--repo", nonRepo)
-	if got := fm(t, store.ResearchPath(dir), "date"); got == "" {
-		t.Error("date should be stamped even without git")
+	if _, err := runRespecErr(t, "stamp", dir, "--repo", nonRepo); err == nil {
+		t.Fatal("expected stamp to fail for a non-git worked-on repo")
 	}
-	if got := fm(t, store.ResearchPath(dir), "git_commit"); got != "" {
-		t.Errorf("git_commit = %q, want empty without git", got)
+	// Nothing was stamped (no partial mutation).
+	if got := fm(t, store.ResearchPath(dir), "date"); got != "" {
+		t.Errorf("date = %q, want unstamped after failed provenance read", got)
+	}
+}
+
+func TestStampResearchOnlyChangeDir(t *testing.T) {
+	// The research phase stamps a dir holding only research.md — no plan.md
+	// or spec.md exists yet, and that must not be an error.
+	repo := initGitRepo(t)
+	dir := t.TempDir()
+	research := "---\ntopic: t\nstatus: draft\n---\n# R\n"
+	if err := os.WriteFile(store.ResearchPath(dir), []byte(research), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runRespec(t, "stamp", dir, "--repo", repo)
+	rp := store.ResearchPath(dir)
+	if got := fm(t, rp, "date"); got == "" {
+		t.Error("research-only stamp did not fill date")
+	}
+	if got := fm(t, rp, "git_commit"); len(got) != 40 {
+		t.Errorf("git_commit = %q, want 40-char sha", got)
+	}
+}
+
+func TestStampFillsEmptyScaffoldedKeys(t *testing.T) {
+	// A scaffolded empty key (`date:`) must be filled, not treated as
+	// already-stamped by the write-once check.
+	repo := initGitRepo(t)
+	dir := t.TempDir()
+	research := "---\ntopic: t\ndate:\nrepo:\n---\n# R\n"
+	if err := os.WriteFile(store.ResearchPath(dir), []byte(research), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runRespec(t, "stamp", dir, "--repo", repo)
+	if got := fm(t, store.ResearchPath(dir), "date"); got == "" || got == "<nil>" {
+		t.Errorf("empty date: key not filled, got %q", got)
+	}
+	if got := fm(t, store.ResearchPath(dir), "repo"); got == "" || got == "<nil>" {
+		t.Errorf("empty repo: key not filled, got %q", got)
 	}
 }

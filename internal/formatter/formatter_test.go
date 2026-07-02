@@ -97,3 +97,18 @@ func firstParagraph(doc string) string {
 	}
 	return ""
 }
+
+func TestFrontmatterNeverReflowed(t *testing.T) {
+	// A frontmatter block containing a blank line would otherwise be parsed by
+	// goldmark as prose and reflowed into invalid YAML.
+	src := "---\ntopic: this is a very long topic value that definitely exceeds the eighty column reflow width\n\ntags: [a]\n---\nbody prose that is long enough to be reflowed by the formatter when it exceeds the configured width\n"
+	out := string(Format([]byte(src), 40))
+	wantFM := "---\ntopic: this is a very long topic value that definitely exceeds the eighty column reflow width\n\ntags: [a]\n---\n"
+	if !strings.HasPrefix(out, wantFM) {
+		t.Fatalf("frontmatter was modified:\n%s", out)
+	}
+	body := strings.TrimPrefix(out, wantFM)
+	if !strings.Contains(strings.TrimRight(body, "\n"), "\n") {
+		t.Errorf("body was not reflowed:\n%s", body)
+	}
+}

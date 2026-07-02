@@ -13,6 +13,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/hurricanehrndz/respec/internal/frontmatter"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
@@ -25,8 +26,18 @@ type span struct {
 }
 
 // Format reflows top-level prose paragraphs in src to width columns and returns
-// the new document bytes. Non-paragraph bytes are preserved exactly.
+// the new document bytes. Non-paragraph bytes are preserved exactly. A leading
+// YAML frontmatter block is never touched: goldmark would otherwise parse a
+// frontmatter containing a blank line as prose and reflow it into invalid YAML.
 func Format(src []byte, width int) []byte {
+	body := frontmatter.Body(src)
+	if len(body) != len(src) {
+		prefix := src[:len(src)-len(body)]
+		out := make([]byte, 0, len(src))
+		out = append(out, prefix...)
+		return append(out, Format(body, width)...)
+	}
+
 	md := goldmark.New(goldmark.WithExtensions(extension.GFM))
 	doc := md.Parser().Parse(text.NewReader(src))
 

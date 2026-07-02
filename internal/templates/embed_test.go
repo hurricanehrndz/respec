@@ -132,3 +132,16 @@ func mustWrite(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestResolveErrorsOnMissingTemplatesDir(t *testing.T) {
+	// A typo'd templates_dir must fail loud, not silently fall back to the
+	// embedded defaults (the operator's overrides would be ignored).
+	cfg := config.Defaults()
+	cfg.TemplatesDir = filepath.Join(t.TempDir(), "no-such-dir")
+	if _, err := Resolve(cfg); err == nil {
+		t.Fatal("expected error for nonexistent templates_dir")
+	}
+	if _, err := Render(cfg); err == nil {
+		t.Fatal("Render should propagate the missing-dir error")
+	}
+}

@@ -54,7 +54,7 @@ func TestStampStatusLifecycle(t *testing.T) {
 		t.Fatalf("pre-stamp state = %q, want unstamped", res.State)
 	}
 
-	runRespec(t, "stamp", dir)
+	runRespec(t, "stamp", dir, "--repo", ".")
 
 	if res := statusJSON(t, dir); res.State != "fresh" {
 		t.Fatalf("post-stamp state = %q, want fresh", res.State)
@@ -71,7 +71,7 @@ func TestStampStatusLifecycle(t *testing.T) {
 
 func TestStatusAsymmetryPlanEditStaysFresh(t *testing.T) {
 	dir := fixtureChange(t, "the spec\n", "---\n---\n# Plan\n\noriginal\n")
-	runRespec(t, "stamp", dir)
+	runRespec(t, "stamp", dir, "--repo", ".")
 	if res := statusJSON(t, dir); res.State != "fresh" {
 		t.Fatalf("post-stamp = %q, want fresh", res.State)
 	}

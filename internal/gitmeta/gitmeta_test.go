@@ -15,7 +15,7 @@ func gitRepo(t *testing.T) string {
 		t.Fatal(err)
 	}
 	runGit(t, dir, "add", "f.txt")
-	runGit(t, dir, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "init")
+	runGit(t, dir, "-c", "user.email=t@t", "-c", "user.name=t", "-c", "commit.gpgsign=false", "commit", "-m", "init")
 	return dir
 }
 

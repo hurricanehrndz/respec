@@ -82,3 +82,19 @@ func TestGetMissing(t *testing.T) {
 		t.Error("expected no frontmatter -> not present")
 	}
 }
+
+func TestGetNullValueIsEmptyNotNilString(t *testing.T) {
+	// `date:` with no value must read as present-but-empty, not "<nil>" —
+	// stamp's write-once check and list's output both depend on this.
+	doc := []byte("---\ntopic: t\ndate:\n---\nbody\n")
+	v, present, err := GetString(doc, "date")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !present {
+		t.Error("null-valued key should report present=true")
+	}
+	if v != "" {
+		t.Errorf("value = %q, want empty string", v)
+	}
+}
