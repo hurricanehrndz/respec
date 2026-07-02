@@ -16,20 +16,24 @@ import (
 func init() {
 	var check bool
 	cmd := &cobra.Command{
-		Use:   "format <path>",
+		Use:   "format <path>...",
 		Short: "Reflow prose to the configured width, leaving non-prose byte-identical",
-		Long: `Reflow prose in a Markdown file, or in every *.md file under a directory
+		Long: `Reflow prose in Markdown files, or in every *.md file under a directory
 (recursively), leaving tables, fenced code, headings, inline HTML, and bare
-URLs byte-identical.`,
-		Args: cobra.ExactArgs(1),
+URLs byte-identical. Multiple paths are accepted (as passed by pre-commit).`,
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			cfg, err := config.Load()
 			if err != nil {
 				return err
 			}
-			files, err := markdownTargets(args[0])
-			if err != nil {
-				return err
+			var files []string
+			for _, arg := range args {
+				targets, err := markdownTargets(arg)
+				if err != nil {
+					return err
+				}
+				files = append(files, targets...)
 			}
 
 			var unformatted []string

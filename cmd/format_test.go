@@ -50,6 +50,30 @@ func TestFormatCheckFailsOnUnformattedDir(t *testing.T) {
 	}
 }
 
+func TestFormatCheckAcceptsMultiplePaths(t *testing.T) {
+	// pre-commit invokes the hook entry with every staged filename as an
+	// argument; a violation anywhere in the batch must fail the run.
+	dir := t.TempDir()
+	good := filepath.Join(dir, "good.md")
+	bad := filepath.Join(dir, "bad.md")
+	if err := os.WriteFile(good, []byte("# T\n\nshort\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bad, []byte(unformattedMD), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := runRespecErr(t, "format", good, bad, "--check"); err == nil {
+		t.Fatal("expected check to fail when any of the paths is unformatted")
+	}
+	if _, err := runRespecErr(t, "format", good, bad, "--check=false"); err != nil {
+		t.Fatalf("format multiple paths: %v", err)
+	}
+	if _, err := runRespecErr(t, "format", good, bad, "--check"); err != nil {
+		t.Fatalf("expected check to pass after formatting: %v", err)
+	}
+}
+
 func TestFormatErrorsOnDirWithoutMarkdown(t *testing.T) {
 	// A dir with zero *.md files must fail loud, not let --check pass vacuously.
 	dir := t.TempDir()

@@ -85,7 +85,7 @@ the current spec.
     respec status <change-dir> [--json]  # per-artifact status + fresh | stale | unstamped
     respec list [--json]                 # every effort in the store, grouped by repo, with staleness
     respec lint <change-dir> [--json]    # validate frontmatter, status, and required sections
-    respec format <path> [--check]       # reflow prose only; non-prose left byte-identical
+    respec format <path>... [--check]    # reflow prose only; non-prose left byte-identical
     respec templates list|eject          # inspect / customize the prompt + skill templates
     respec install-hook                  # store pre-commit hook that checks Markdown formatting
     respec render [--out <dir>]          # build the store as a browsable Hugo site

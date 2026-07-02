@@ -66,7 +66,7 @@ Nothing is ever written to the repo you invoke from.
 | `respec status <change-dir> [--json]` | Report `fresh` / `stale` / `unstamped` plus per-artifact status |
 | `respec list [--json]` | List every effort in the store, grouped by repo, with status/staleness |
 | `respec lint <change-dir> [--json]` | Validate frontmatter fields, `status` values, and required sections |
-| `respec format <path> [--check]` | Reflow prose in a file or every `*.md` under a dir; non-prose stays byte-identical |
+| `respec format <path>... [--check]` | Reflow prose in files or every `*.md` under a dir; non-prose stays byte-identical |
 | `respec templates list\|eject [name]` | Inspect templates / copy embedded defaults into `templates_dir` |
 | `respec install-hook [--force]` | Install a store pre-commit hook that checks Markdown formatting |
 | `respec render [--out <dir>]` | Build the store as a Hugo site (default `<cache>/respec/site/public`) |
@@ -97,6 +97,20 @@ stale.
 `respec format` reflows paragraph prose only — tables, fenced code, headings,
 inline HTML, and bare URLs are left byte-identical, and inline code / links /
 URLs are never split across lines.
+
+To guard the store repo, either install the standalone hook
+(`respec install-hook`) or, if the store uses the
+[pre-commit](https://pre-commit.com) framework, reference this repo's hooks in
+its `.pre-commit-config.yaml` (`respec-format` checks; `respec-format-fix`
+rewrites in place):
+
+```yaml
+repos:
+  - repo: https://github.com/hurricanehrndz/respec
+    rev: <tag-or-sha>
+    hooks:
+      - id: respec-format
+```
 
 `respec render` / `respec serve` require `hugo` on PATH, preserve inline HTML
 (`markup.goldmark.renderer.unsafe = true`), and render ` ```mermaid ` fences as

@@ -1,0 +1,23 @@
+# Hooks consumable via the pre-commit framework (https://pre-commit.com),
+# e.g. from a store repo:
+#
+#   repos:
+#     - repo: https://github.com/hurricanehrndz/respec
+#       rev: <tag-or-sha>
+#       hooks:
+#         - id: respec-format
+#
+# For plain-git stores without pre-commit, `respec install-hook` installs an
+# equivalent standalone hook.
+- id: respec-format
+  name: respec format --check
+  description: Verify Markdown prose is reflowed to the configured width (checks only, never modifies files)
+  entry: respec format --check
+  language: golang
+  types: [markdown]
+- id: respec-format-fix
+  name: respec format
+  description: Reflow Markdown prose in place (pre-commit fails the run when files change; re-stage and retry)
+  entry: respec format
+  language: golang
+  types: [markdown]
