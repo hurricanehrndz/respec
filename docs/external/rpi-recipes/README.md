@@ -13,14 +13,14 @@ respec's embedded prompt templates (`internal/templates/assets/`) derived
 their document structure from these recipes: the phased plan skeleton with
 dual **Automated/Manual Verification**, "What We're NOT Doing", and the
 research doc shape (Summary / Findings / Open Questions). Where respec
-deviates deliberately — interview-driven research with Options & Tradeoffs
-and a Decisions log instead of RPI's "no opinions" rule; the CLI stamping
-provenance instead of the agent; scale-directed exploration instead of
-RPI's mandatory parallel sub-recipe fan-out (default is in the open within
-the dedicated research session, because the artifact is the context
-handoff and mid-session subagents cost the operator observability and
-steerability during the interview; fan-out only when codebase size makes
-bulk reading drown the session) — the reasoning lives in the repo history
-and CLAUDE.md.
+deviates deliberately — alignment-driven, opinionated research (evidence-based
+recommendations, Options & Tradeoffs, a Decisions log) instead of RPI's
+"no opinions" rule; the CLI stamping provenance instead of the agent;
+scale-directed exploration instead of RPI's mandatory parallel sub-recipe
+fan-out (default is in the open within the dedicated research session,
+because the artifact is the context handoff and mid-session subagents cost
+the operator observability and steerability during the live exploration;
+fan-out only when codebase size makes bulk reading drown the session) —
+the reasoning lives in the repo history and CLAUDE.md.
 
 Consult these when iterating on the prompt templates; do not edit them.

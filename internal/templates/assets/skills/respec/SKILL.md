@@ -17,7 +17,7 @@ site rendering. Never compute `date`, git metadata, or hashes by hand — `respe
 ## Store layout
 
     {{.Store}}/<owner-repo>/<slug>/
-        research.md   # interview-driven findings + decisions
+        research.md   # findings, options, and operator decisions
         spec.md       # requirements / desired behavior
         plan.md       # phased implementation + checkboxes
 
@@ -53,19 +53,27 @@ delegate bulk reads only when they would drown the session. An agent without a s
 can spawn a fresh instance of itself via the shell.
 
 ### Research (`{{.Cmd "research"}} <topic>`)
-Interview-driven context-building — not neutral documentation. Clarify the topic, explore the code
-(`file:line` refs), weigh options with pros/cons, and record the decisions the operator leans
-toward. Write `research.md` (required sections: Research Question, Summary, Findings, Open
-Questions; add Options & Tradeoffs / Decisions as needed), then `respec stamp <change-dir>`.
-Nothing goes to the worked-on repo.
+Drives toward alignment — not neutral documentation. Explore the code (`file:line` refs), separate
+verified facts from doc/vendor claims, ask the operator only what evidence cannot answer, weigh
+options with pros/cons and recommend one, and record the operator's calls under Decisions. Write
+`research.md` (required sections: Research Question, Summary, Findings, Open Questions; add
+Options & Tradeoffs / Decisions as needed), then `respec stamp <change-dir>` and
+`respec lint <change-dir>`. Done when a fresh plan session could work from the artifact and the
+code it references without re-asking anything settled. Nothing goes to the worked-on repo.
 
 ### Plan (`{{.Cmd "plan"}} [change-dir]`)
-Read `research.md` (its Decisions are settled constraints). Co-generate `spec.md` + `plan.md`
-(shared deliverables). The plan is phased with, per phase, an **Automated Verification** checklist
-(commands you can tick yourself) and a **Manual Verification** checklist (operator judgment calls).
-If a plan exists and is **stale**, amend it surgically. Then:
+Read `research.md` (its Decisions are settled constraints). Confirm the phase outline with the
+operator, then co-generate `spec.md` + `plan.md` (shared deliverables). The plan is phased with,
+per phase, an **Automated Verification** checklist (commands you can tick yourself) and a
+**Manual Verification** checklist (operator judgment calls). The final plan carries no unresolved
+questions and states the chosen approach and why.
+
+Revisiting an existing plan: amend surgically, never regenerate; preserve completed checkboxes
+unless the change invalidates them (say so first). Scope/behavior feedback goes into `spec.md`
+first — staleness then forces the re-plan; approach-only feedback is a direct plan edit. Then:
 
     respec stamp <change-dir>
+    respec lint <change-dir>
 
 ### Implement (`{{.Cmd "implement"}} <change-dir>`)
 First gate on staleness:
@@ -74,8 +82,11 @@ First gate on staleness:
 
 - `stale`   → the spec changed after stamping; STOP and re-plan.
 - `unstamped` → STOP and run `{{.Cmd "plan"}}` to stamp.
-- `fresh`   → proceed: execute phases in order, ticking Automated checks as they pass and pausing
-  at each phase's Manual checks for operator confirmation.
+- `fresh`   → proceed: set the plan's `status` to `in-progress`, execute phases in order, ticking
+  Automated checks as they pass and pausing at each phase's Manual checks for operator
+  confirmation. Trust the plan — search only when it is ambiguous or reality mismatches it; on a
+  mismatch, stop and report (expected vs. found) instead of improvising. When the final Manual
+  checks are confirmed, set `status` to `done`.
 
 ## Staleness model
 
@@ -104,6 +115,8 @@ the current spec.
   GitHub and `respec render`/`serve`) and inline HTML where they communicate better than prose.
 - Never write research/spec/plan artifacts into the worked-on repo — only into the central store.
 - Never hand-compute provenance or hashes; run `respec stamp`.
+- No silent assumptions, in any phase: verify it, ask the operator, or record it as an open
+  question — never build on a guess.
 - The plan is the source of truth during implementation.
 - Keep `spec.md` and `plan.md` consistent; re-stamp after any spec change.
 {{if .Context}}

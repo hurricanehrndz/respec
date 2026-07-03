@@ -14,16 +14,28 @@ Load the detailed workflow first: read `{{.SkillPath}}` (or `{{.SkillCmd}}`).
 
 Your job this phase:
 
-1. Read `research.md` in the target change directory — its **Decisions** are settled constraints.
-2. Ask any remaining clarifying questions and offer options before committing to an approach.
-3. **Co-generate** `spec.md` and `plan.md` together, sharing one deliverables list:
+1. Read `research.md` in the target change directory — its **Decisions** are settled constraints;
+   do not re-litigate them or re-run the research.
+2. Close the remaining gaps before committing to an approach: ask only what inspection cannot
+   answer, and when the operator corrects your understanding, verify the correction against the
+   code before building on it. No silent assumptions — resolve by inspection or by asking; the
+   final plan carries no unresolved questions.
+3. Propose the phase outline first — each phase's name and what it accomplishes — and confirm it
+   with the operator before writing the detailed plan.
+4. **Co-generate** `spec.md` and `plan.md` together, sharing one deliverables list:
    - `spec.md` — the requirements / desired behavior.
    - `plan.md` — the phased implementation.
-4. If a `plan.md` already exists and `respec status <change-dir>` reports **stale**, amend the plan
-   **surgically** to match the changed spec rather than regenerating it from scratch.
-5. After writing both files, stamp the plan (records the spec hash, reflows prose):
+5. Revisiting an existing plan? Amend **surgically** — never regenerate from scratch — and
+   preserve completed checkboxes unless the change invalidates them (call that out first):
+   - `respec status <change-dir>` reports **stale** → the spec changed; amend the plan to match.
+   - Operator feedback while the spec is unchanged → scope or behavior feedback belongs in
+     `spec.md` first (staleness then forces the re-plan); approach-only feedback is a direct
+     surgical plan edit.
+6. After writing both files, stamp the plan (records the spec hash, reflows prose), then lint and
+   fix any findings:
 
        respec stamp <change-dir>
+       respec lint <change-dir>
 
 Frontmatter you write: `spec.md` → `title`, `status` (`draft`|`approved`), optional `tags`;
 `plan.md` → `title`, `status` (`draft`|`approved`|`in-progress`|`done`), and optional `depends_on`
@@ -48,7 +60,8 @@ Frontmatter you write: `spec.md` → `title`, `status` (`draft`|`approved`), opt
     # <title> Implementation Plan
 
     ## Overview
-    <what we are implementing and why>
+    <what we are implementing, the chosen approach, and why — written so the implementer can
+    resolve small mismatches in its spirit>
 
     ## Current State
     <what exists now, key file:line discoveries, constraints>
@@ -86,7 +99,14 @@ they beat prose — architecture sketches in the spec, phase/dependency flow in 
 `respec render`/`serve` both render them, and diagrams-as-text diff cleanly. Inline HTML is also
 fine when it adds value; the store render preserves it.
 
+Quality bar: implementation should feel mechanical. If the implementing session would need to
+invent design, the plan is not specific enough.
+
 Write only into the central store change directory. Nothing goes into the worked-on repo.
+
+End by summarizing the spec and plan paths, the phases, and the risks the implementer should
+watch — and remind the operator to review both artifacts before starting a fresh implement
+session.
 {{if .Context}}
 ## Shared context
 

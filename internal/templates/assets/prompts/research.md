@@ -13,25 +13,23 @@ Central store (all artifacts live here, never in the worked-on repo):
 Load the detailed workflow before doing anything else: read the `respec` skill at
 `{{.SkillPath}}` (or invoke `{{.SkillCmd}}`). Follow it.
 
-Research here is **interview-driven context-building**, not neutral archaeology. The goal is to
-gather enough shared context that the plan phase can proceed efficiently. So:
+Research here **drives toward alignment**, not neutral archaeology. You explore, form an
+evidence-based view, and converge with the operator on the decisions the plan must stand on. So:
 
-1. **Interview the operator.** Clarify the topic; offer interpretations when it is ambiguous. Ask
-   the questions that code inspection cannot answer, and do not guess on decisions that change
-   direction.
-2. **Explore the code** to ground every finding in reality; capture concrete `file:line` references.
-   Read any files the operator names **in full, first**, then work the topic as a few distinct
-   research questions: *where* do the relevant files and components live, *how* does the specific
-   code actually work, and *how* does this codebase already solve similar problems. **Default to
-   exploring in the open, in this session** — the operator steers the exploration live (it is an
-   interview), and everything worth keeping is distilled into `research.md`, the artifact that
-   hands later sessions their context. Your context window is disposable; the artifact is not.
-   Before reaching for subagents, gauge the scale (count and size the relevant files/dirs): only
-   when the codebase is large enough that the bulk reading would drown this session, delegate the
-   bulk reads — and keep the interview and synthesis here either way. An agent without a subagent
-   feature can spawn a fresh instance of itself via the shell. If you run low on context, record
-   what remains under **Open Questions** and continue in a fresh session that starts from the
-   artifact.{{if .HasProbe}}
+1. **Explore the code first** to ground every finding in reality; capture concrete `file:line`
+   references. Read any files the operator names **in full, first**, then work the topic as a few
+   distinct research questions: *where* do the relevant files and components live, *how* does the
+   specific code actually work, and *how* does this codebase already solve similar problems. The
+   ground truth may also be external — candidate tools, APIs, prior art — and "almost nothing
+   exists in the codebase yet" is itself a finding. **Default to exploring in the open, in this
+   session** — the operator steers the exploration live, and everything worth keeping is distilled
+   into `research.md`, the artifact that hands later sessions their context. Your context window
+   is disposable; the artifact is not. Before reaching for subagents, gauge the scale (count and
+   size the relevant files/dirs): only when the codebase is large enough that the bulk reading
+   would drown this session, delegate the bulk reads — and keep the dialogue and synthesis here
+   either way. An agent without a subagent feature can spawn a fresh instance of itself via the
+   shell. If you run low on context, record what remains under **Open Questions** and continue in
+   a fresh session that starts from the artifact.{{if .HasProbe}}
    `probe` is installed — prefer it over plain grep-and-read for exploration; it returns whole
    semantic blocks (functions, classes) ranked by relevance, which keeps context small:
 
@@ -39,10 +37,20 @@ gather enough shared context that the plan phase can proceed efficiently. So:
        probe extract <file>#<symbol>    # pull one function/class by name
        probe extract <file>:<line>      # pull the block containing a line
 {{end}}
-3. **Weigh options.** When more than one path exists, lay out the candidates with pros and cons.
-   Surface tradeoffs rather than hiding them.
-4. **Record decisions.** When the operator leans toward an approach, write it down with the
-   reasoning so the plan phase treats it as a settled constraint.
+2. **Keep evidence honest.** Separate what you verified by reading code or probing first-hand
+   from what a doc, comment, or vendor claims. For external tools and services, prefer running
+   the thing over restating its README.
+3. **Ask what evidence cannot answer.** Bring the operator the questions inspection cannot
+   settle — intent, priorities, tradeoff calls — and offer interpretations when the topic is
+   ambiguous. Questions are not a substitute for investigation.
+4. **No silent assumptions.** When something material is not immediately obvious: verify it; if
+   you cannot verify it, ask; if it stays unresolved, record it under **Open Questions** as an
+   explicit unknown. Never present an assumption as a finding.
+5. **Take a position.** When more than one path exists, lay out the candidates with pros and
+   cons and recommend one, with reasoning. If the evidence genuinely favors neither, say it is a
+   coin flip — a recorded coin flip is still alignment.
+6. **Record decisions.** When the operator makes the call, write it into **Decisions** with the
+   reasoning so the plan phase treats it as settled.
 
 Create the change directory under the store, grouped by the **primary repo** you are working in
 and named by a short slug:
@@ -78,10 +86,10 @@ Body skeleton:
     <what exists today, with file:line references>
 
     ## Options & Tradeoffs
-    <candidate paths, each with pros and cons — omit if there is genuinely one path>
+    <candidate paths with pros/cons and your recommendation — omit if there is genuinely one path>
 
     ## Decisions
-    <what the operator leaned toward, and why — omit until something is decided>
+    <the operator's call and the reasoning — omit until something is decided>
 
     ## Open Questions
     <anything still unresolved after the interview>
@@ -94,11 +102,20 @@ sequencing is easier to see than to read, use a Mermaid diagram (a fenced ` ```m
 GitHub and `respec render`/`serve` both render them, and diagrams-as-text diff cleanly. Inline HTML
 is also fine when it adds value; the store render preserves it.
 
-When the document is written, stamp it (fills provenance, reflows prose):
+Quality bar: the artifact is complete when a fresh planning session, reading only `research.md`
+and the code it references, could produce an informed plan without redoing the research or
+re-asking the operator anything already settled.
+
+When the document is written, stamp it (fills provenance, reflows prose), then lint and fix any
+findings:
 
     respec stamp <change-dir>
+    respec lint <change-dir>
 
 Do **not** write anything into the worked-on repo. Every file goes under the central store.
+
+End by summarizing the artifact path and the key findings, decisions, and open questions — and
+remind the operator to review `research.md` before starting a fresh plan session.
 {{if .Context}}
 ## Shared context
 
