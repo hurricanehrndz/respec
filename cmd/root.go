@@ -7,9 +7,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// version is the respec release version, managed by `go tool versionbump`
+// (see versionbump.yaml).
+const version = "0.1.0"
+
 var rootCmd = &cobra.Command{
-	Use:   "respec",
-	Short: "Single-operator, spec-driven research → plan → implement workflow tool",
+	Use:     "respec",
+	Version: version,
+	Short:   "Single-operator, spec-driven research → plan → implement workflow tool",
 	Long: `respec drives a research → plan → implement workflow backed by a single
 central store. The CLI does deterministic plumbing only: hold config, render and
 install the /rsx:* pi prompt-templates, stamp/compare staleness, reflow prose, and

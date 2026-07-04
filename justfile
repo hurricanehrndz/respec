@@ -17,3 +17,7 @@ lint:
 # remove build artifacts
 clean:
     rm -rf build
+
+# bump the version, commit, and tag (patch|minor|major|...)
+bump part="patch":
+    go tool versionbump {{part}}
