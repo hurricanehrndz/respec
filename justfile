@@ -5,6 +5,10 @@ default:
 build:
     go build -o build/respec .
 
+# build and install the binary into ~/.local/bin/
+install: build
+    install -D build/respec ~/.local/bin/respec
+
 # vet + run all tests
 test:
     go vet ./...
