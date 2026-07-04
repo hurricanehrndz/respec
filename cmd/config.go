@@ -5,15 +5,35 @@ import (
 
 	"github.com/hurricanehrndz/respec/internal/config"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 func init() {
+	printRun := func(c *cobra.Command, _ []string) error {
+		cfg, err := config.Load()
+		if err != nil {
+			return err
+		}
+		data, err := yaml.Marshal(cfg)
+		if err != nil {
+			return err
+		}
+		_, err = c.OutOrStdout().Write(data)
+		return err
+	}
+
 	configCmd := &cobra.Command{
 		Use:   "config",
 		Short: "Read or write respec configuration",
 	}
 
 	configCmd.AddCommand(
+		&cobra.Command{
+			Use:   "print",
+			Short: "Print the effective configuration (defaults applied)",
+			Args:  cobra.NoArgs,
+			RunE:  printRun,
+		},
 		&cobra.Command{
 			Use:   "path",
 			Short: "Print the config file path",
