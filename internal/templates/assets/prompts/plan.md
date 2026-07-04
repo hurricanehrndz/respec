@@ -37,6 +37,10 @@ Your job this phase:
        respec stamp <change-dir>
        respec lint <change-dir>
 
+   If this session is not running inside the worked-on repo (`repo_path` in `research.md` names
+   it), pass `respec stamp --repo <worked-on-repo> <change-dir>` — stamp refuses to run against
+   the store itself.
+
 Frontmatter you write: `spec.md` → `title`, `status` (`draft`|`approved`), optional `tags`;
 `plan.md` → `title`, `status` (`draft`|`approved`|`in-progress`|`done`), and optional `depends_on`
 (efforts that must finish first — a bare slug for the same repo, or `repo/slug` cross-repo).

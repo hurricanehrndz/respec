@@ -112,6 +112,10 @@ findings:
     respec stamp <change-dir>
     respec lint <change-dir>
 
+If this session is not running inside the worked-on repo (e.g. it started in the store), pass
+`respec stamp --repo <worked-on-repo> <change-dir>` — stamp refuses to record the store itself
+as provenance.
+
 Do **not** write anything into the worked-on repo. Every file goes under the central store.
 
 End by summarizing the artifact path and the key findings, decisions, and open questions — and

@@ -58,6 +58,19 @@ holding only research.md is fine.`,
 				c.SilenceUsage = true
 				return fmt.Errorf("reading provenance from %q: %w (the worked-on repo must be a git repository; use --repo to point at it)", repoDir, err)
 			}
+
+			// A session run from inside the store (instead of the worked-on
+			// repo) would pin the store's own history as provenance — wrong,
+			// and write-once makes it sticky. git resolves symlinks in
+			// Toplevel, so resolve the store path before comparing.
+			storePath := cfg.StorePath()
+			if resolved, rerr := filepath.EvalSymlinks(storePath); rerr == nil {
+				storePath = resolved
+			}
+			if gm.Toplevel == storePath {
+				c.SilenceUsage = true
+				return fmt.Errorf("refusing to stamp: %q is the central store, not the worked-on repo; pass --repo <worked-on-repo>", gm.Toplevel)
+			}
 			repo := gm.Remote
 			if repo == "" {
 				repo = filepath.Base(gm.Toplevel)

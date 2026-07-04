@@ -121,6 +121,33 @@ func TestStampResearchOnlyChangeDir(t *testing.T) {
 	}
 }
 
+func TestStampRefusesStoreAsProvenance(t *testing.T) {
+	// A session run from inside the store must not pin the store's own
+	// history as research provenance — write-once would freeze the wrong
+	// repo/commit. Stamp must refuse and point at --repo.
+	repo := initGitRepo(t)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	cfgDir := filepath.Join(home, ".config", "respec")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.yaml"), []byte("store: "+repo+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(store.ResearchPath(dir), []byte("---\ntopic: t\n---\n# R\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := runRespecErr(t, "stamp", dir, "--repo", repo)
+	if err == nil {
+		t.Fatalf("expected stamp to refuse the store as provenance, output:\n%s", out)
+	}
+	if got := fm(t, store.ResearchPath(dir), "date"); got != "" {
+		t.Errorf("date = %q, want unstamped after refusal", got)
+	}
+}
+
 func TestStampFillsEmptyScaffoldedKeys(t *testing.T) {
 	// A scaffolded empty key (`date:`) must be filled, not treated as
 	// already-stamped by the write-once check.

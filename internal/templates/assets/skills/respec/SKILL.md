@@ -99,7 +99,9 @@ the current spec.
 
     respec config get|set|path           # configuration (~/.config/respec/config.yaml)
     respec install --target <agent>      # (re)install these prompts + this skill at user scope (pi | claude)
-    respec stamp <change-dir>            # write provenance + spec_sha256, then reflow the artifacts
+    respec stamp <change-dir> [--repo <path>]  # write provenance + spec_sha256, then reflow the artifacts
+                                         # (--repo: the worked-on repo, when the session runs elsewhere;
+                                         #  stamp refuses to record the store itself as provenance)
     respec status <change-dir> [--json]  # per-artifact status + fresh | stale | unstamped
     respec list [--json]                 # every effort in the store, grouped by repo, with staleness
     respec lint <change-dir> [--json]    # validate frontmatter, status, and required sections
