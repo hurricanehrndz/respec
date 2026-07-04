@@ -17,8 +17,60 @@ plumbing only:
 
 ## Setup
 
-Requires Go and Hugo (both provided by the repo's `devenv` shell) and an
-agent: pi and/or Claude Code.
+### Dependencies
+
+Required:
+
+- **[Go](https://go.dev)** — installs respec itself (`go install`).
+- **git** — respec's model is git-based: `respec stamp` reads provenance
+  (repo, commit) from the worked-on repo, and the central store is a git repo
+  you own.
+- **An agent** — [pi](https://github.com/earendil-works/pi) and/or
+  [Claude Code](https://code.claude.com); the prompts run there.
+
+Optional, for the best experience:
+
+- **[Hugo](https://gohugo.io)** — required only by `respec render` / `respec
+  serve`, which build the store into a browsable site (with Mermaid diagrams).
+- **[probe](https://github.com/probelabs/probe)** — local semantic code
+  search; when on PATH at install time, the research prompt steers the agent
+  to explore with it (see below).
+- **[pre-commit](https://pre-commit.com)** — if your store repo uses the
+  framework, this repo ships `respec-format` hooks to guard Markdown
+  formatting (a standalone `respec install-hook` alternative needs nothing
+  extra).
+
+On Nix, a [devenv](https://devenv.sh) shell can provide all of it. An example
+`devenv.nix` for the store repo, which also wires the `respec format --check`
+guard as a pre-commit hook (devenv generates `.pre-commit-config.yaml`; the
+hooks block additionally needs
+`devenv inputs add git-hooks github:cachix/git-hooks.nix --follows nixpkgs`):
+
+```nix
+{ pkgs, ... }:
+
+{
+  packages = with pkgs; [
+    git
+    hugo # respec render / serve
+  ];
+
+  # for `go install github.com/hurricanehrndz/respec@latest`
+  languages.go.enable = true;
+
+  # probe is not in nixpkgs: `npm install -g @probelabs/probe`
+  # languages.javascript.enable = true;
+
+  git-hooks.hooks.respec-format = {
+    enable = true;
+    name = "respec format --check";
+    entry = "respec format --check";
+    types = [ "markdown" ];
+  };
+}
+```
+
+### Install
 
 ```sh
 go install github.com/hurricanehrndz/respec@latest
