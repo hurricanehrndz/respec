@@ -8,3 +8,8 @@ disableKinds = ["taxonomy", "term"]
 # Preserve inline HTML in artifacts (R-10). Hugo enables GFM tables by default.
 [markup.goldmark.renderer]
   unsafe = true
+
+# Emit Chroma highlighting as CSS classes (not inline styles) so the
+# highlight.html partial can theme code by prefers-color-scheme (light/dark).
+[markup.highlight]
+  noClasses = false
