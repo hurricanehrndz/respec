@@ -1,6 +1,43 @@
 {{ define "main" }}
-<article>
-<h1>{{ .Title }}</h1>
-{{ .Content }}
+{{ $kinds := partial "kinds.html" . }}
+{{ $kind := "" }}{{ if .File }}{{ $kind = .File.ContentBaseName }}{{ end }}
+{{ $meta := index $kinds $kind }}
+{{ $title := or .Title .Params.topic .Params.title (path.Base .RelPermalink) }}
+<article data-kind="{{ $kind }}">
+  <div class="artifact-hero">
+    <div class="row">
+      <span class="kind-badge">{{ with $meta }}{{ .letter }}{{ end }}</span>
+      <span class="kind-name">{{ with $meta }}{{ .label }}{{ else }}Document{{ end }}</span>
+      {{ with .Params.status }}<span class="status" data-status="{{ . }}">{{ . }}</span>{{ end }}
+    </div>
+    <h1>{{ $title }}</h1>
+    <div class="facts">
+      {{ with .Params.date }}<span>{{ dateFormat "Jan 2, 2006" . }}</span>{{ end }}
+      {{ with .Params.repo }}<span>{{ . }}</span>{{ end }}
+      {{ range .Params.tags }}<span class="tag">{{ . }}</span>{{ end }}
+    </div>
+  </div>
+
+  {{/* Sibling switcher: jump between research / spec / plan within this effort.
+       Effort dirs aren't Hugo sections, so siblings are the CurrentSection
+       (repo) pages sharing this artifact's directory. */}}
+  {{ $dir := path.Clean .File.Dir }}
+  {{ $byKind := dict }}
+  {{ range .CurrentSection.RegularPages }}{{ if and .File (eq (path.Clean .File.Dir) $dir) }}{{ $byKind = merge $byKind (dict .File.ContentBaseName .) }}{{ end }}{{ end }}
+  <nav class="switch">
+  {{ range $k := slice "research" "spec" "plan" }}
+    {{ $m := index $kinds $k }}
+    {{ $pg := index $byKind $k }}
+    {{ if eq $k $kind }}
+      <span class="current" data-kind="{{ $k }}"><span class="kind-badge">{{ $m.letter }}</span>{{ $m.label }}</span>
+    {{ else if $pg }}
+      <a data-kind="{{ $k }}" href="{{ $pg.RelPermalink }}"><span class="kind-badge">{{ $m.letter }}</span>{{ $m.label }}</a>
+    {{ else }}
+      <span class="missing" data-kind="{{ $k }}" title="not yet written"><span class="kind-badge">{{ $m.letter }}</span>{{ $m.label }}</span>
+    {{ end }}
+  {{ end }}
+  </nav>
+
+  <div class="prose">{{ .Content }}</div>
 </article>
 {{ end }}

@@ -1,0 +1,7 @@
+{{- /* Shared per-kind visual metadata for the three respec artifacts.
+       Returned as a dict so list/single templates render kinds consistently. */ -}}
+{{- return dict
+  "research" (dict "label" "Research" "letter" "R" "blurb" "Findings & context")
+  "spec"     (dict "label" "Spec"     "letter" "S" "blurb" "Requirements")
+  "plan"     (dict "label" "Plan"     "letter" "P" "blurb" "Phased execution")
+-}}

@@ -1,0 +1,26 @@
+{{- /* Renders the research → spec → plan pipeline for one effort.
+       Context (.) is a slice of that effort's artifact pages (some kinds may be
+       absent). Effort directories have no _index.md, so callers group the
+       repo's RegularPages by directory and pass the group here. */ -}}
+{{ $pages := . }}
+{{ $kinds := partial "kinds.html" . }}
+{{ $byKind := dict }}
+{{ range $pages }}{{ if .File }}{{ $byKind = merge $byKind (dict .File.ContentBaseName .) }}{{ end }}{{ end }}
+<div class="pipeline">
+{{ range $i, $kind := slice "research" "spec" "plan" }}
+  {{ $meta := index $kinds $kind }}
+  {{ $pg := index $byKind $kind }}
+  {{ if $i }}<span class="pipe-arrow">→</span>{{ end }}
+  {{ if $pg }}
+  <a class="stage" data-kind="{{ $kind }}" href="{{ $pg.RelPermalink }}">
+    <span class="kind-badge">{{ $meta.letter }}</span>
+    <span class="txt"><span class="lbl">{{ $meta.label }}</span><span class="st">{{ or $pg.Params.status "—" }}</span></span>
+  </a>
+  {{ else }}
+  <span class="stage absent" data-kind="{{ $kind }}">
+    <span class="kind-badge">{{ $meta.letter }}</span>
+    <span class="txt"><span class="lbl">{{ $meta.label }}</span><span class="st">absent</span></span>
+  </span>
+  {{ end }}
+{{ end }}
+</div>

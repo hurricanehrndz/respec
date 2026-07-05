@@ -1,6 +1,10 @@
 baseURL = "/"
 title = "respec store"
 
+# The store groups efforts by directory, not by Hugo taxonomies; suppress the
+# auto-generated /tags and /categories pages so they don't render as orphans.
+disableKinds = ["taxonomy", "term"]
+
 # Preserve inline HTML in artifacts (R-10). Hugo enables GFM tables by default.
 [markup.goldmark.renderer]
   unsafe = true

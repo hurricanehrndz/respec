@@ -4,16 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ if .Title }}{{ .Title }} · {{ end }}{{ .Site.Title }}</title>
+{{ partial "style.html" . }}
 </head>
 <body>
-<nav><a href="{{ "/" | relURL }}">{{ .Site.Title }}</a></nav>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="{{ "/" | relURL }}">respec<span class="dot">·</span>store</a>
+  </div>
+</header>
+
+{{ if not .IsHome }}
+<nav class="crumbs">
+  <a href="{{ "/" | relURL }}">store</a>
+  {{ range .Ancestors.Reverse }}{{ if not .IsHome }}<span class="sep">/</span><a href="{{ .RelPermalink }}">{{ path.Base .RelPermalink }}</a>{{ end }}{{ end }}
+  {{ if .IsPage }}
+    <span class="sep">/</span><span>{{ path.Base (path.Clean .File.Dir) }}</span>
+    <span class="sep">/</span><span>{{ .File.ContentBaseName }}</span>
+  {{ else }}
+    <span class="sep">/</span><span>{{ path.Base .RelPermalink }}</span>
+  {{ end }}
+</nav>
+{{ end }}
+
 <main>
 {{ block "main" . }}{{ end }}
 </main>
+
+<footer class="site-footer">
+  Rendered from the respec central store · research → spec → plan
+</footer>
+
 {{ if .Store.Get "hasMermaid" }}
 <script type="module">
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-  mermaid.initialize({ startOnLoad: true });
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
 </script>
 {{ end }}
 </body>

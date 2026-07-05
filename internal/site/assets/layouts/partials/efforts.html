@@ -1,0 +1,21 @@
+{{- /* Groups a repository section's RegularPages into efforts by directory.
+       Effort dirs have no _index.md so Hugo flattens their artifacts into the
+       repo section; we regroup here by cleaned file dir. Returns a slice of
+       {slug, dir, date, pages}, oldest first. */ -}}
+{{ $sec := . }}
+{{ $dirs := slice }}
+{{ range $sec.RegularPages }}{{ if .File }}{{ $dirs = $dirs | append (path.Clean .File.Dir) }}{{ end }}{{ end }}
+{{ $dirs = $dirs | uniq | sort }}
+{{ $out := slice }}
+{{ range $dir := $dirs }}
+  {{ $pages := slice }}
+  {{ $date := "" }}
+  {{ range $sec.RegularPages }}
+    {{ if and .File (eq (path.Clean .File.Dir) $dir) }}
+      {{ $pages = $pages | append . }}
+      {{ if and (not $date) .Params.date }}{{ $date = .Params.date }}{{ end }}
+    {{ end }}
+  {{ end }}
+  {{ $out = $out | append (dict "slug" (path.Base $dir) "dir" $dir "date" $date "pages" $pages) }}
+{{ end }}
+{{ return $out }}
