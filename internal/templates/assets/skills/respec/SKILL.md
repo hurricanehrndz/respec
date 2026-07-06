@@ -2,6 +2,8 @@
 name: respec
 description: The respec spec-driven workflow (research → plan → implement) over a single central store. Use when running {{.Cmd "research"}}, {{.Cmd "plan"}}, or {{.Cmd "implement"}}, or when creating/editing research.md, spec.md, or plan.md artifacts, or when calling the respec CLI (stamp, status, lint, format, templates, render, serve).
 ---
+{{- /* Workflow mechanics here are deliberately duplicated in the prompts/*.md templates so each
+file stands alone — edit both together. */}}
 
 # respec workflow
 

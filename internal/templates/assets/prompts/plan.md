@@ -2,9 +2,16 @@
 description: Co-generate spec.md + plan.md from research, then stamp the plan
 argument-hint: "[change-dir]"
 ---
+{{- /* Workflow mechanics here (frontmatter split, stamp/lint sequence, lint-validated headings) are
+deliberately duplicated in skills/respec/SKILL.md so each file stands alone — edit both together. */}}
 You are in the **Plan** phase of the respec workflow (research → plan → implement).
 
 Change directory (defaults to the most recent under the store if omitted): {{.Arg1Or "<pick latest>"}}
+
+If omitted, pick the latest deterministically: run `respec list` — rows sort most-recent-first
+within each repo — and take the top effort for the worked-on repo. If that pick is ambiguous
+(no clear top row, or the session is not inside a worked-on repo), ask the operator instead of
+guessing.
 
 Central store:
 
@@ -19,7 +26,14 @@ Your job this phase:
 2. Close the remaining gaps before committing to an approach: ask only what inspection cannot
    answer, and when the operator corrects your understanding, verify the correction against the
    code before building on it. No silent assumptions — resolve by inspection or by asking; the
-   final plan carries no unresolved questions.
+   final plan carries no unresolved questions.{{if .HasProbe}}
+   `probe` is installed — prefer it over plain grep-and-read for inspection; it returns whole
+   semantic blocks (functions, classes) ranked by relevance, which keeps context small:
+
+       probe search "<terms>" <path>    # Elasticsearch-style query: AND / OR / NOT
+       probe extract <file>#<symbol>    # pull one function/class by name
+       probe extract <file>:<line>      # pull the block containing a line
+{{end}}
 3. Propose the phase outline first — each phase's name and what it accomplishes — and confirm it
    with the operator before writing the detailed plan.
 4. **Co-generate** `spec.md` and `plan.md` together, sharing one deliverables list:

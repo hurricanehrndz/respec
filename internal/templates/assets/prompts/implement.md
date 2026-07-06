@@ -2,6 +2,8 @@
 description: Implement an approved plan, gating on spec/plan staleness
 argument-hint: "<change-dir>"
 ---
+{{- /* Workflow mechanics here (staleness gate, status lifecycle) are deliberately duplicated in
+skills/respec/SKILL.md so each file stands alone — edit both together. */}}
 You are in the **Implement** phase of the respec workflow (research → plan → implement).
 
 Change directory (required — stop and ask if missing): {{.Arg1Req "provide the change directory under the store"}}
@@ -20,6 +22,9 @@ Load the detailed workflow first: read `{{.SkillPath}}` (or `{{.SkillCmd}}`).
   re-plan with `{{.Cmd "plan"}} <change-dir>` and do not implement.
 - If the state is `unstamped`, STOP and tell the operator to run `{{.Cmd "plan"}}` so the plan is stamped.
 - If the state is `fresh`, proceed.
+
+Re-run this gate whenever you resume after a pause (e.g. after a Manual Verification stop) — the
+operator may have edited `spec.md` in the meantime.
 
 When fresh:
 
@@ -45,9 +50,10 @@ If a planned file, symbol, command, or behavior is missing, stop and report befo
     Why this matters: <impact on correctness or scope>
     Suggested next step: <narrow plan update or operator guidance>
 
-When the final phase's Manual checks are confirmed, set the plan's `status` to `done` and
-summarize: files changed, verification performed, manual checks still pending, and any deviations
-from the plan.
+When the final phase's Manual checks are confirmed, set the plan's `status` to `done`, run
+`respec format <change-dir>` (your checkbox and status edits must keep the store's formatting
+hook green), and summarize: files changed, verification performed, manual checks still pending,
+and any deviations from the plan.
 
 The plan is the source of truth. Code changes land in the worked-on repo; plan/spec/research edits
 land only in the central store change directory.

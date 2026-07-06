@@ -2,6 +2,8 @@
 description: Research a topic into the respec central store (writes research.md)
 argument-hint: "<topic>"
 ---
+{{- /* Workflow mechanics here (slug recipe, stamp/lint sequence, lint-validated headings) are
+deliberately duplicated in skills/respec/SKILL.md so each file stands alone — edit both together. */}}
 You are in the **Research** phase of the respec workflow (research → plan → implement).
 
 Topic: {{.AllArgs}}
@@ -69,7 +71,7 @@ repo**. If one exists, ask the operator whether this is a new version; if so, us
 like `<slug>-v2` (two efforts for one repo cannot share a slug).
 
 Then write `research.md` in that directory. Frontmatter you write: `topic`, `status` (`draft` until
-the interview settles, then `complete`), and optional `tags`. **Do not** hand-write the provenance
+alignment settles, then `complete`), and optional `tags`. **Do not** hand-write the provenance
 fields — `respec stamp` fills `date`, `repo`, `repo_path`, and `git_commit` for you.
 
 Body skeleton:
@@ -92,7 +94,7 @@ Body skeleton:
     <the operator's call and the reasoning — omit until something is decided>
 
     ## Open Questions
-    <anything still unresolved after the interview>
+    <anything still unresolved after alignment>
 
 `respec lint` validates the section headings **Research Question**, **Summary**, **Findings**, and
 **Open Questions** verbatim — keep those names even when customizing this template.
