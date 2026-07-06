@@ -172,6 +172,15 @@ func TestRenderPerTarget(t *testing.T) {
 	if !strings.Contains(pi.Prompts["implement.md"], "/rsx:plan") {
 		t.Error("pi implement.md should reference /rsx:plan")
 	}
+	// The required change-dir must use a placeholder pi actually substitutes.
+	// pi supports $@/$1/${1:-default} but NOT bash's ${1:?msg}, which would
+	// pass through literally and read to the agent as a missing argument.
+	if !strings.Contains(pi.Prompts["implement.md"], "missing): $@") {
+		t.Error("pi implement.md should pass the required change dir via $@")
+	}
+	if strings.Contains(pi.Prompts["implement.md"], "${1:?") {
+		t.Error("pi implement.md must not use ${1:?...}; pi leaves it literal")
+	}
 
 	// Claude Code has no bash-style placeholders and no colons in command names.
 	for name, content := range claude.Prompts {

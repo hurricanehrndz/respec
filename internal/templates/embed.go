@@ -62,13 +62,19 @@ func (t Target) Arg1Or(def string) string {
 	return "${1:-" + def + "}"
 }
 
-// Arg1Req is the first-argument placeholder for a required argument, same
-// caveat as Arg1Or: only pi can enforce it in the placeholder itself.
+// Arg1Req is the first-argument placeholder for a required argument. Neither
+// target can enforce required-ness in the placeholder itself: pi's template
+// engine substitutes $@, $1, ${1:-default}, and ${@:N} but NOT bash's ${1:?msg}
+// error form — that pattern is left literal, so the agent sees the raw
+// placeholder and treats the arg as missing. Claude Code has no such syntax at
+// all. Both therefore emit a plain all-args placeholder and rely on the
+// surrounding prose ("required — stop and ask if missing") to enforce it. msg
+// is retained to document the argument at the call site.
 func (t Target) Arg1Req(msg string) string {
 	if t.isClaude() {
 		return "$ARGUMENTS"
 	}
-	return "${1:?" + msg + "}"
+	return "$@"
 }
 
 // Cmd returns the installed command name for a prompt. pi namespaces with a
