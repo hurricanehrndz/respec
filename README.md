@@ -9,7 +9,7 @@ repo you are working on. The actual reasoning is done by the agent — running i
 plumbing only:
 
 - hold config (store path, optional injected context/rules),
-- render and install the research|plan|implement prompts + backing skill at user scope,
+- render and install the research, plan, auto-plan, implement, and auto-implement prompts + backing skill at user scope,
 - stamp deterministic frontmatter — provenance (date, repo, git commit) and the
   spec→plan staleness hash — and auto-reflow the artifacts,
 - validate artifacts (`lint`) and reflow prose without touching structure,
@@ -81,11 +81,11 @@ respec install --target claude           # same, for Claude Code (run both if yo
 ```
 
 `--target pi` writes the prompts to
-`~/.pi/agent/prompts/rsx:{research,plan,implement}.md` and the skill to
+`~/.pi/agent/prompts/rsx:{research,plan,plan-auto,implement,implement-auto}.md` and the skill to
 `~/.pi/agent/skills/respec/`. `--target claude` writes the commands to
-`~/.claude/commands/rsx-{research,plan,implement}.md` (Claude Code command
-names cannot contain a colon, so there the workflow is
-`/rsx-research|plan|implement`) and the skill to `~/.claude/skills/respec/`.
+`~/.claude/commands/rsx-{research,plan,plan-auto,implement,implement-auto}.md` (Claude Code command
+names cannot contain a colon, so there the workflow uses `/rsx-*`) and the skill to
+`~/.claude/skills/respec/`.
 The store path is baked in either way. Re-running is idempotent; it overwrites
 the respec-owned files with a fresh render, so run it again after changing
 config.
@@ -103,14 +103,27 @@ From any repo, in an agent session (Claude Code names are `/rsx-research` etc.):
    `<store>/<owner-repo>/<slug>/` (efforts are grouped by the primary repo they affect), then runs
    `respec stamp` to fill provenance (date, repo, git commit).
 2. `/rsx:plan` — reads the research, co-generates `spec.md` + `plan.md` in the same change dir
-   (phased plan with per-phase Automated/Manual verification), then runs `respec stamp` to record
-   the spec's hash. If a plan already exists and the spec changed, it amends the plan surgically
-   instead of regenerating.
+   (phased plan with per-phase Automated/Manual verification and an end-to-end feedback loop), then
+   runs `respec stamp` to record the spec's hash. If a plan already exists, it amends it surgically
+   and preserves its `execution_mode`.
 3. `/rsx:implement` — first runs `respec status --json`; if the spec changed since the plan was
-   stamped (`stale`), it stops and tells you to re-plan. Otherwise it executes the plan's phases,
-   ticking Automated checkboxes as they pass and pausing at each phase's Manual checks.
+   stamped (`stale`), it stops and tells you to re-plan. Otherwise it executes the manual plan's
+   phases. The orchestrator performs every feasible Manual check and pauses only for checks that
+   genuinely require the operator.
 
-Nothing is ever written to the repo you invoke from.
+Auto variants remove intermediate operator gates:
+
+- `/rsx:plan-auto` resolves non-blocking choices autonomously, asks necessary setup/clarification
+  questions early, writes `execution_mode: auto`, and requires a runnable E2E/integration/smoke
+  check.
+- `/rsx:implement-auto` runs each phase as a medium-effort Pi or Claude child, has the orchestrator
+  review and verify the result, then uses a low-effort child to commit the accepted phase. It asks
+  the operator only for blockers or the final consolidated acceptance.
+
+Claude Code spells these commands `/rsx-plan-auto` and `/rsx-implement-auto`; Pi uses
+`/rsx:plan-auto` and `/rsx:implement-auto`.
+
+Artifacts remain in the central store; implementation changes land only in the worked-on repo.
 
 ## Commands
 

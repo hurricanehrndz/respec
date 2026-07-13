@@ -26,7 +26,10 @@ Your job this phase:
 2. Close the remaining gaps before committing to an approach: ask only what inspection cannot
    answer, and when the operator corrects your understanding, verify the correction against the
    code before building on it. No silent assumptions — resolve by inspection or by asking; the
-   final plan carries no unresolved questions.{{if .HasProbe}}
+   final plan carries no unresolved questions. Identify the highest meaningful end-to-end
+   feedback loop available (existing E2E/integration suite, CLI smoke test, rendered output, or a
+   real request through the public boundary). Ask early if credentials, services, hardware, or
+   setup are required so verification is not discovered to be impossible during implementation.{{if .HasProbe}}
    `probe` is installed — prefer it over plain grep-and-read for inspection; it returns whole
    semantic blocks (functions, classes) ranked by relevance, which keeps context small:
 
@@ -45,6 +48,9 @@ Your job this phase:
    - Operator feedback while the spec is unchanged → scope or behavior feedback belongs in
      `spec.md` first (staleness then forces the re-plan); approach-only feedback is a direct
      surgical plan edit.
+   - Preserve its `execution_mode`. An auto plan remains auto unless the operator explicitly asks
+     to switch it; keep its unattended phase/verification/commit contract and re-check that edited
+     phases still have a runnable end-to-end path. A new normal plan uses `execution_mode: manual`.
 6. After writing both files, stamp the plan (records the spec hash, reflows prose), then lint and
    fix any findings:
 
@@ -56,8 +62,9 @@ Your job this phase:
    the store itself.
 
 Frontmatter you write: `spec.md` → `title`, `status` (`draft`|`approved`), optional `tags`;
-`plan.md` → `title`, `status` (`draft`|`approved`|`in-progress`|`done`), and optional `depends_on`
-(efforts that must finish first — a bare slug for the same repo, or `repo/slug` cross-repo).
+`plan.md` → `title`, `status` (`draft`|`approved`|`in-progress`|`done`), optional
+`execution_mode` (`manual`|`auto`), and optional `depends_on` (efforts that must finish first — a
+bare slug for the same repo, or `repo/slug` cross-repo).
 `respec stamp` fills `spec.md`'s `date` and `plan.md`'s `spec_sha256` — do not write those by hand.
 
 `spec.md` skeleton:
@@ -98,14 +105,18 @@ Frontmatter you write: `spec.md` → `title`, `status` (`draft`|`approved`), opt
     - [ ] lint passes: `<command>`
 
     ### Manual Verification
-    - [ ] <behavior to confirm by hand>
+    - [ ] Orchestrator: <behavior or diff property the agent can inspect>
+    - [ ] Operator: <irreducibly human/external check, only when necessary>
 
     ## Testing Strategy
-    <unit / integration coverage and key edge cases>
+    <unit / integration / end-to-end coverage, runnable commands, and key edge cases>
 
-Split verification deliberately: **Automated** = commands the implementer can run and tick off
-itself; **Manual** = judgment calls that gate the phase and need the operator. Add more phases as
-needed; each phase pauses at its Manual checks before the next begins.
+Split verification deliberately: **Automated** = deterministic commands; **Manual** = judgment.
+The orchestrating agent must perform every feasible Manual item itself and tick it when verified;
+reserve `Operator:` items for checks the agent truly cannot perform. Add phases as needed. A plan
+must include a runnable end-to-end, integration, or smoke feedback loop at the highest practical
+boundary, not just unit tests. In manual mode, pause only for remaining `Operator:` items. In auto
+mode, move prerequisites early and avoid intermediate operator gates.
 
 `respec lint` validates the headings **Requirements** (spec), **Overview**, at least one
 **Phase**, **Automated Verification**, and **Manual Verification** (plan) verbatim — keep those

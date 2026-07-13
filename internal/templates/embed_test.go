@@ -172,6 +172,19 @@ func TestRenderPerTarget(t *testing.T) {
 	if !strings.Contains(pi.Prompts["implement.md"], "/rsx:plan") {
 		t.Error("pi implement.md should reference /rsx:plan")
 	}
+	if !strings.Contains(pi.Prompts["implement-auto.md"], "pi --print --no-session --thinking medium") {
+		t.Error("pi implement-auto.md should spawn isolated medium-effort pi children")
+	}
+	if !strings.Contains(pi.Prompts["implement-auto.md"], "pi --print --no-session --thinking low") {
+		t.Error("pi implement-auto.md should delegate commits to low-effort pi children")
+	}
+	if !strings.Contains(pi.Prompts["plan-auto.md"], "execution_mode: auto") ||
+		!strings.Contains(pi.Prompts["plan-auto.md"], "runnable E2E/smoke command") {
+		t.Error("pi plan-auto.md should persist auto mode and require end-to-end feedback")
+	}
+	if !strings.Contains(pi.Prompts["implement-auto.md"], "/rsx:plan-auto") {
+		t.Error("pi implement-auto.md should reference /rsx:plan-auto")
+	}
 	// The required change-dir must use a placeholder pi actually substitutes.
 	// pi supports $@/$1/${1:-default} but NOT bash's ${1:?msg}, which would
 	// pass through literally and read to the agent as a missing argument.
@@ -180,6 +193,9 @@ func TestRenderPerTarget(t *testing.T) {
 	}
 	if strings.Contains(pi.Prompts["implement.md"], "${1:?") {
 		t.Error("pi implement.md must not use ${1:?...}; pi leaves it literal")
+	}
+	if !strings.Contains(pi.Prompts["implement-auto.md"], "missing): $@") {
+		t.Error("pi implement-auto.md should pass the required change dir via $@")
 	}
 
 	// Claude Code has no bash-style placeholders and no colons in command names.
@@ -198,6 +214,15 @@ func TestRenderPerTarget(t *testing.T) {
 	}
 	if !strings.Contains(claude.Prompts["implement.md"], "/rsx-plan") {
 		t.Error("claude implement.md should reference /rsx-plan")
+	}
+	if !strings.Contains(claude.Prompts["implement-auto.md"], "env -u CLAUDECODE claude --print --no-session-persistence --effort medium") {
+		t.Error("claude implement-auto.md should spawn isolated medium-effort Claude children")
+	}
+	if !strings.Contains(claude.Prompts["implement-auto.md"], "env -u CLAUDECODE claude --print --no-session-persistence --effort low") {
+		t.Error("claude implement-auto.md should delegate commits to low-effort Claude children")
+	}
+	if !strings.Contains(claude.Prompts["implement-auto.md"], "/rsx-plan-auto") {
+		t.Error("claude implement-auto.md should reference /rsx-plan-auto")
 	}
 	if !strings.Contains(claude.Skills["respec/SKILL.md"], "/rsx-research") {
 		t.Error("claude skill should reference /rsx-research")

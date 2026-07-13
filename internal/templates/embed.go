@@ -41,11 +41,12 @@ var (
 	Targets = map[string]Target{"pi": TargetPi, "claude": TargetClaude}
 )
 
-func (t Target) isClaude() bool { return t.Name == TargetClaude.Name }
+// IsClaude reports whether templates are being rendered for Claude Code.
+func (t Target) IsClaude() bool { return t.Name == TargetClaude.Name }
 
 // AllArgs is the placeholder expanding to the invocation's whole argument string.
 func (t Target) AllArgs() string {
-	if t.isClaude() {
+	if t.IsClaude() {
 		return "$ARGUMENTS"
 	}
 	return "$@"
@@ -56,7 +57,7 @@ func (t Target) AllArgs() string {
 // the surrounding prose must carry the fallback and the raw placeholder is
 // emitted; pi embeds the default.
 func (t Target) Arg1Or(def string) string {
-	if t.isClaude() {
+	if t.IsClaude() {
 		return "$ARGUMENTS"
 	}
 	return "${1:-" + def + "}"
@@ -71,7 +72,7 @@ func (t Target) Arg1Or(def string) string {
 // surrounding prose ("required — stop and ask if missing") to enforce it. msg
 // is retained to document the argument at the call site.
 func (t Target) Arg1Req(msg string) string {
-	if t.isClaude() {
+	if t.IsClaude() {
 		return "$ARGUMENTS"
 	}
 	return "$@"
@@ -81,7 +82,7 @@ func (t Target) Arg1Req(msg string) string {
 // colon (/rsx:plan); Claude Code user-scope command names cannot contain one,
 // so the namespace flattens to a hyphen (/rsx-plan).
 func (t Target) Cmd(name string) string {
-	if t.isClaude() {
+	if t.IsClaude() {
 		return "/rsx-" + name
 	}
 	return "/rsx:" + name
@@ -89,7 +90,7 @@ func (t Target) Cmd(name string) string {
 
 // SkillPath is where the installed respec skill lives at user scope.
 func (t Target) SkillPath() string {
-	if t.isClaude() {
+	if t.IsClaude() {
 		return "~/.claude/skills/respec/SKILL.md"
 	}
 	return "~/.pi/agent/skills/respec/SKILL.md"
@@ -97,7 +98,7 @@ func (t Target) SkillPath() string {
 
 // SkillCmd is how the operator invokes the respec skill interactively.
 func (t Target) SkillCmd() string {
-	if t.isClaude() {
+	if t.IsClaude() {
 		return "/respec"
 	}
 	return "/skill:respec"

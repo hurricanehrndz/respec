@@ -33,6 +33,7 @@ var (
 	researchStatuses = []string{"draft", "complete"}
 	specStatuses     = []string{"draft", "approved"}
 	planStatuses     = []string{"draft", "approved", "in-progress", StatusDone}
+	executionModes   = []string{"manual", "auto"}
 )
 
 // Research is the typed frontmatter of research.md. The agent writes topic,
@@ -58,15 +59,16 @@ type Spec struct {
 	body   []byte
 }
 
-// Plan is the typed frontmatter of plan.md. The agent writes title, status, and
-// optional depends_on (slugs of efforts that must finish first); respec stamp
-// fills spec_sha256.
+// Plan is the typed frontmatter of plan.md. The agent writes title, status,
+// optional execution_mode, and optional depends_on (slugs of efforts that must
+// finish first); respec stamp fills spec_sha256.
 type Plan struct {
-	Title     string   `yaml:"title"`
-	Status    string   `yaml:"status"`
-	SpecSHA   string   `yaml:"spec_sha256"`
-	DependsOn []string `yaml:"depends_on"`
-	body      []byte
+	Title         string   `yaml:"title"`
+	Status        string   `yaml:"status"`
+	ExecutionMode string   `yaml:"execution_mode"`
+	SpecSHA       string   `yaml:"spec_sha256"`
+	DependsOn     []string `yaml:"depends_on"`
+	body          []byte
 }
 
 // IsDone reports whether the plan has reached its terminal status.
@@ -156,6 +158,9 @@ func (pl Plan) Validate() []string {
 	p = appendMissing(p, "status", pl.Status)
 	p = appendMissing(p, "spec_sha256", pl.SpecSHA)
 	p = appendBadStatus(p, pl.Status, planStatuses)
+	if pl.ExecutionMode != "" && !oneOf(pl.ExecutionMode, executionModes) {
+		p = append(p, fmt.Sprintf("invalid execution_mode %q (allowed: %s)", pl.ExecutionMode, strings.Join(executionModes, "|")))
+	}
 	hs := headings(pl.body)
 	p = appendMissingSections(p, hs, "Overview", "Automated Verification", "Manual Verification")
 	if !hasHeadingPrefix(hs, "phase") {

@@ -1,6 +1,6 @@
 ---
 name: respec
-description: The respec spec-driven workflow (research → plan → implement) over a single central store. Use when running {{.Cmd "research"}}, {{.Cmd "plan"}}, or {{.Cmd "implement"}}, or when creating/editing research.md, spec.md, or plan.md artifacts, or when calling the respec CLI (stamp, status, lint, format, templates, render, serve).
+description: The respec spec-driven workflow (research → plan → implement) over a single central store. Use when running {{.Cmd "research"}}, {{.Cmd "plan"}}, {{.Cmd "plan-auto"}}, {{.Cmd "implement"}}, or {{.Cmd "implement-auto"}}, or when creating/editing research.md, spec.md, or plan.md artifacts, or when calling the respec CLI (stamp, status, lint, format, templates, render, serve).
 ---
 {{- /* Workflow mechanics here are deliberately duplicated in the prompts/*.md templates so each
 file stands alone — edit both together. */}}
@@ -40,7 +40,7 @@ You write the human fields; `respec stamp` fills the deterministic ones.
 | --- | --- | --- |
 | research.md | `topic`, `status` (draft\|complete), `tags` | `date`, `repo`, `repo_path`, `git_commit` (write-once) |
 | spec.md | `title`, `status` (draft\|approved), `tags` | `date` (write-once) |
-| plan.md | `title`, `status` (draft\|approved\|in-progress\|done), optional `depends_on` | `spec_sha256` (refreshed) |
+| plan.md | `title`, `status` (draft\|approved\|in-progress\|done), optional `execution_mode` (manual\|auto), optional `depends_on` | `spec_sha256` (refreshed) |
 
 `respec lint <change-dir>` validates these fields, the `status` values, and the required body
 sections.
@@ -65,30 +65,59 @@ code it references without re-asking anything settled. Nothing goes to the worke
 
 ### Plan (`{{.Cmd "plan"}} [change-dir]`)
 Read `research.md` (its Decisions are settled constraints). Confirm the phase outline with the
-operator, then co-generate `spec.md` + `plan.md` (shared deliverables). The plan is phased with,
-per phase, an **Automated Verification** checklist (commands you can tick yourself) and a
-**Manual Verification** checklist (operator judgment calls). The final plan carries no unresolved
-questions and states the chosen approach and why.
+operator, then co-generate `spec.md` + `plan.md` (shared deliverables). Find the highest practical
+end-to-end feedback loop and ask early for any access/setup it needs. Each phase has **Automated
+Verification** (deterministic commands) and **Manual Verification** (judgment). The orchestrator
+owns every feasible manual check; label only irreducibly external checks `Operator:`. New normal
+plans use `execution_mode: manual`.
 
-Revisiting an existing plan: amend surgically, never regenerate; preserve completed checkboxes
-unless the change invalidates them (say so first). Scope/behavior feedback goes into `spec.md`
-first — staleness then forces the re-plan; approach-only feedback is a direct plan edit. Then:
+### Auto Plan (`{{.Cmd "plan-auto"}} [change-dir]`)
+Perform the same planning work without outline approval or incremental confirmation. Resolve
+ordinary choices from evidence, conventions, and safe reversible defaults. Ask all material
+questions and E2E prerequisites together at the start; do not plan around a blocker. Write
+`execution_mode: auto`, include a runnable E2E/integration/smoke command, and make every phase
+independently implementable, reviewable, verifiable, and committable. Record the autonomous
+execution contract in the overview.
+
+Revisiting any plan: amend surgically, never regenerate; preserve completed checkboxes unless the
+change invalidates them. Preserve `execution_mode` unless the operator explicitly switches it;
+invoking Auto Plan on a manual plan is an explicit switch to auto. Scope/behavior feedback updates
+`spec.md` first; approach-only feedback updates `plan.md`. Re-check affected gates and E2E, then:
 
     respec stamp <change-dir>
     respec lint <change-dir>
 
 ### Implement (`{{.Cmd "implement"}} <change-dir>`)
-First gate on staleness:
+Gate on `respec status <change-dir> --json`; stale/unstamped plans stop for the matching planner.
+A fresh manual plan runs in phase order. Tick passing Automated checks, perform and tick feasible
+Manual checks yourself, and pause only for remaining `Operator:` checks. Run the planned E2E path.
+If reality contradicts the plan, stop and report expected vs. found instead of improvising.
 
-    respec status <change-dir> --json
+### Auto Implement (`{{.Cmd "implement-auto"}} <change-dir>`)
+Require a fresh plan with `execution_mode: auto`. Work sequentially by phase:
 
-- `stale`   → the spec changed after stamping; STOP and re-plan.
-- `unstamped` → STOP and run `{{.Cmd "plan"}}` to stamp.
-- `fresh`   → proceed: set the plan's `status` to `in-progress`, execute phases in order, ticking
-  Automated checks as they pass and pausing at each phase's Manual checks for operator
-  confirmation. Trust the plan — search only when it is ambiguous or reality mismatches it; on a
-  mismatch, stop and report (expected vs. found) instead of improvising. When the final Manual
-  checks are confirmed, set `status` to `done`.
+1. Spawn a fresh medium-effort implementation child in the worked-on repo:
+{{if .IsClaude}}
+       env -u CLAUDECODE claude --print --no-session-persistence --effort medium "<phase task>"
+{{else}}
+       pi --print --no-session --thinking medium "<phase task>"
+{{end}}{{if .IsClaude}}
+   Claude children deliberately unset the parent's `CLAUDECODE` nesting guard.{{end}}
+2. The orchestrator reviews the complete diff, runs all automated and E2E checks, and performs all
+   feasible manual checks. Failed review goes to a fresh medium-effort correction child; the
+   orchestrator never accepts a child's self-report as proof.
+3. After acceptance, spawn a fresh low-effort child to commit exactly the phase:
+{{if .IsClaude}}
+       env -u CLAUDECODE claude --print --no-session-persistence --effort low "<commit task>"
+{{else}}
+       pi --print --no-session --thinking low "<commit task>"
+{{end}}
+4. Verify the commit, update checkboxes, and continue. Never run phase workers concurrently in one
+   working tree.
+
+Do not interrupt the operator until the final consolidated acceptance unless blocked by a plan
+mismatch, required access, unsafe dirty state, scope change, or high-impact action. Set `done` only
+when all checks are complete; otherwise remain `in-progress` for final operator acceptance.
 
 ## Staleness model
 
@@ -123,6 +152,8 @@ the current spec.
   question — never build on a guess.
 - The plan is the source of truth during implementation.
 - Keep `spec.md` and `plan.md` consistent; re-stamp after any spec change.
+- Every plan seeks an end-to-end feedback loop; auto plans require a runnable E2E, integration, or
+  smoke check and surface prerequisites during planning, not implementation.
 {{if .Context}}
 ## Shared context
 

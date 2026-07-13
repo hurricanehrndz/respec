@@ -23,7 +23,7 @@ func runInstall(t *testing.T, target string) string {
 func TestInstallPiWritesUserScopeFiles(t *testing.T) {
 	home := runInstall(t, "pi")
 
-	prompts := []string{"rsx:research.md", "rsx:plan.md", "rsx:implement.md"}
+	prompts := []string{"rsx:research.md", "rsx:plan.md", "rsx:plan-auto.md", "rsx:implement.md", "rsx:implement-auto.md"}
 	for _, name := range prompts {
 		p := filepath.Join(home, ".pi", "agent", "prompts", name)
 		data, err := os.ReadFile(p)
@@ -48,7 +48,7 @@ func TestInstallPiWritesUserScopeFiles(t *testing.T) {
 func TestInstallClaudeWritesUserScopeFiles(t *testing.T) {
 	home := runInstall(t, "claude")
 
-	prompts := []string{"rsx-research.md", "rsx-plan.md", "rsx-implement.md"}
+	prompts := []string{"rsx-research.md", "rsx-plan.md", "rsx-plan-auto.md", "rsx-implement.md", "rsx-implement-auto.md"}
 	for _, name := range prompts {
 		p := filepath.Join(home, ".claude", "commands", name)
 		data, err := os.ReadFile(p)

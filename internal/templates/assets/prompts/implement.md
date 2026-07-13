@@ -19,8 +19,10 @@ Load the detailed workflow first: read `{{.SkillPath}}` (or `{{.SkillCmd}}`).
     respec status <change-dir> --json
 
 - If the state is `stale`, STOP. The spec changed after the plan was stamped. Tell the operator to
-  re-plan with `{{.Cmd "plan"}} <change-dir>` and do not implement.
-- If the state is `unstamped`, STOP and tell the operator to run `{{.Cmd "plan"}}` so the plan is stamped.
+  re-plan with `{{.Cmd "plan"}} <change-dir>` (or `{{.Cmd "plan-auto"}}` when
+  `execution_mode: auto`) and do not implement.
+- If the state is `unstamped`, STOP and tell the operator to run the matching plan command so the
+  plan is stamped.
 - If the state is `fresh`, proceed.
 
 Re-run this gate whenever you resume after a pause (e.g. after a Manual Verification stop) — the
@@ -28,19 +30,22 @@ operator may have edited `spec.md` in the meantime.
 
 When fresh:
 
-1. Read `plan.md` and `spec.md` in the change directory completely. If the plan already has
-   checkmarks, trust them: resume from the first unchecked item and do not silently redo
-   completed work.
+1. Read `plan.md` and `spec.md` in the change directory completely. If `execution_mode: auto`,
+   STOP and direct the operator to `{{.Cmd "implement-auto"}} <change-dir>`; do not discard its
+   orchestration contract. If the plan already has checkmarks, trust them: resume from the first
+   unchecked item and do not silently redo completed work.
 2. Set the plan's `status` to `in-progress` when you begin.
 3. Execute the plan's phases in order, making the smallest changes that satisfy each phase.
    **Trust the plan** — do not re-search what it already documents; search only when the plan is
    ambiguous, reality mismatches it, or verification requires it.
 4. For each phase, run its **Automated Verification** commands and tick those checkboxes in
-   `plan.md` as they pass. If a command fails, debug within the phase's scope; if the fix would
-   change the plan, stop and ask.
-5. At each phase boundary, stop at the **Manual Verification** items: do not tick them yourself —
-   report which automated checks passed and which manual checks await, then pause for operator
-   confirmation, unless told to run consecutively.
+   `plan.md` as they pass. Run the planned end-to-end/integration/smoke check at the earliest
+   applicable phase and after the final phase. If a command fails, debug within the phase's scope;
+   if the fix would change the plan, stop and ask.
+5. Perform every feasible **Manual Verification** item yourself by inspecting the diff or running
+   the behavior, and tick it only after collecting evidence. Manual means judgment, not
+   necessarily operator action. Pause only for items explicitly assigned to `Operator:` or checks
+   you genuinely cannot perform; report all evidence and the exact remaining gate.
 
 If a planned file, symbol, command, or behavior is missing, stop and report before improvising:
 
@@ -50,7 +55,7 @@ If a planned file, symbol, command, or behavior is missing, stop and report befo
     Why this matters: <impact on correctness or scope>
     Suggested next step: <narrow plan update or operator guidance>
 
-When the final phase's Manual checks are confirmed, set the plan's `status` to `done`, run
+When the final phase's remaining Operator checks are confirmed, set the plan's `status` to `done`, run
 `respec format <change-dir>` (your checkbox and status edits must keep the store's formatting
 hook green), and summarize: files changed, verification performed, manual checks still pending,
 and any deviations from the plan.
