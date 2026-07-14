@@ -42,5 +42,18 @@
   mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
 </script>
 {{ end }}
+<script>
+  document.querySelector(".prose")?.addEventListener("click", (e) => {
+    const el = e.target.closest("img, pre.mermaid");
+    if (!el) return;
+    const back = document.createElement("div");
+    back.className = "zoom-backdrop";
+    back.append(el.cloneNode(true));
+    const close = () => back.remove();
+    back.addEventListener("click", close);
+    addEventListener("keydown", (k) => k.key === "Escape" && close(), { once: true });
+    document.body.append(back);
+  });
+</script>
 </body>
 </html>

@@ -291,5 +291,18 @@ main {
 .prose hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
 .prose pre.mermaid { background: var(--surface); border: 1px solid var(--border); text-align: center; }
 
+/* Click-to-zoom for images and mermaid diagrams. */
+.prose img, .prose pre.mermaid { cursor: zoom-in; }
+.zoom-backdrop {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; cursor: zoom-out;
+  background: rgba(0,0,0,.82);
+}
+.zoom-backdrop > * { max-width: 96vw; max-height: 96vh; margin: 0; overflow: auto; }
+.zoom-backdrop img { width: auto; height: auto; }
+.zoom-backdrop pre.mermaid { background: var(--surface); padding: 20px; border-radius: 8px; }
+.zoom-backdrop svg { max-width: none !important; width: auto; height: auto; }
+
 .empty { color: var(--muted); font-style: italic; padding: 20px 0; }
 </style>
