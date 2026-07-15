@@ -18,7 +18,10 @@ Load the detailed workflow before doing anything else: read the `respec` skill a
 Research here **drives toward alignment**, not neutral archaeology. You explore, form an
 evidence-based view, and converge with the operator on the decisions the plan must stand on. So:
 
-1. **Explore the code first** to ground every finding in reality; capture concrete `file:line`
+1. **Establish the motivation.** Record why the change is being requested or initiated, including
+   the triggering problem or opportunity and why it matters now. Use evidence or operator input;
+   if the motivation is unclear, ask rather than infer it.
+2. **Explore the code first** to ground every finding in reality; capture concrete `file:line`
    references. Read any files the operator names **in full, first**, then work the topic as a few
    distinct research questions: *where* do the relevant files and components live, *how* does the
    specific code actually work, and *how* does this codebase already solve similar problems. The
@@ -39,19 +42,19 @@ evidence-based view, and converge with the operator on the decisions the plan mu
        probe extract <file>#<symbol>    # pull one function/class by name
        probe extract <file>:<line>      # pull the block containing a line
 {{end}}
-2. **Keep evidence honest.** Separate what you verified by reading code or probing first-hand
+3. **Keep evidence honest.** Separate what you verified by reading code or probing first-hand
    from what a doc, comment, or vendor claims. For external tools and services, prefer running
    the thing over restating its README.
-3. **Ask what evidence cannot answer.** Bring the operator the questions inspection cannot
+4. **Ask what evidence cannot answer.** Bring the operator the questions inspection cannot
    settle — intent, priorities, tradeoff calls — and offer interpretations when the topic is
    ambiguous. Questions are not a substitute for investigation.
-4. **No silent assumptions.** When something material is not immediately obvious: verify it; if
+5. **No silent assumptions.** When something material is not immediately obvious: verify it; if
    you cannot verify it, ask; if it stays unresolved, record it under **Open Questions** as an
    explicit unknown. Never present an assumption as a finding.
-5. **Take a position.** When more than one path exists, lay out the candidates with pros and
+6. **Take a position.** When more than one path exists, lay out the candidates with pros and
    cons and recommend one, with reasoning. If the evidence genuinely favors neither, say it is a
    coin flip — a recorded coin flip is still alignment.
-6. **Record decisions.** When the operator makes the call, write it into **Decisions** with the
+7. **Record decisions.** When the operator makes the call, write it into **Decisions** with the
    reasoning so the plan phase treats it as settled.
 
 Create the change directory under the store, grouped by the **primary repo** you are working in
@@ -80,6 +83,9 @@ Body skeleton:
 
     ## Research Question
     <what we are trying to understand>
+
+    ## Motivation
+    <why the change is being requested or initiated, and why now>
 
     ## Summary
     <the short version of what you learned>

@@ -52,6 +52,20 @@ func TestRenderSubstitutesStoreAndInjects(t *testing.T) {
 	}
 }
 
+func TestResearchTemplateCapturesChangeMotivation(t *testing.T) {
+	r, err := Render(config.Defaults(), TargetPi, Features{})
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	if !strings.Contains(r.Prompts["research.md"], "## Motivation") {
+		t.Error("research prompt should preserve why the change was initiated")
+	}
+	if !strings.Contains(r.Skills["respec/SKILL.md"], "with a Motivation section") {
+		t.Error("respec skill should require motivation in new research artifacts")
+	}
+}
+
 func TestRenderOmitsEmptyContextAndRules(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"

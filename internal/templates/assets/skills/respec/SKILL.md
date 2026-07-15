@@ -19,7 +19,7 @@ site rendering. Never compute `date`, git metadata, or hashes by hand — `respe
 ## Store layout
 
     {{.Store}}/<owner-repo>/<slug>/
-        research.md   # findings, options, and operator decisions
+        research.md   # motivation, findings, options, and operator decisions
         spec.md       # requirements / desired behavior
         plan.md       # phased implementation + checkboxes
 
@@ -55,11 +55,13 @@ delegate bulk reads only when they would drown the session. An agent without a s
 can spawn a fresh instance of itself via the shell.
 
 ### Research (`{{.Cmd "research"}} <topic>`)
-Drives toward alignment — not neutral documentation. Explore the code (`file:line` refs), separate
-verified facts from doc/vendor claims, ask the operator only what evidence cannot answer, weigh
-options with pros/cons and recommend one, and record the operator's calls under Decisions. Write
-`research.md` (required sections: Research Question, Summary, Findings, Open Questions; add
-Options & Tradeoffs / Decisions as needed), then `respec stamp <change-dir>` and
+Drives toward alignment — not neutral documentation. Establish why the change is being requested
+or initiated and why now; do not infer unclear motivation. Explore the code (`file:line` refs),
+separate verified facts from doc/vendor claims, ask the operator only what evidence cannot answer,
+weigh options with pros/cons and recommend one, and record the operator's calls under Decisions.
+Write `research.md` with a Motivation section (required lint sections remain Research Question,
+Summary, Findings, Open Questions; add Options & Tradeoffs / Decisions as needed), then
+`respec stamp <change-dir>` and
 `respec lint <change-dir>`. Done when a fresh plan session could work from the artifact and the
 code it references without re-asking anything settled. Nothing goes to the worked-on repo.
 
