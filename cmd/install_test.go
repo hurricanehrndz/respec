@@ -138,6 +138,50 @@ func TestInstallRejectsUnknownTarget(t *testing.T) {
 	}
 }
 
+// A skill file that is no longer rendered must go: the agent reads whatever is
+// in the bundle, so a retired reference file would keep being loaded next to
+// its replacement. Other operators' skills in the same directory are not ours.
+func TestInstallPrunesRetiredSkillFiles(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("CODEX_HOME", "")
+
+	skillsDir := filepath.Join(home, ".pi", "agent", "skills")
+	retired := filepath.Join(skillsDir, "respec", "references", "old.md")
+	foreign := filepath.Join(skillsDir, "someone-elses", "SKILL.md")
+	for _, p := range []string{retired, foreign} {
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	rootCmd.SetArgs([]string{"install", "--target", "pi"})
+	rootCmd.SetOut(os.NewFile(0, os.DevNull))
+	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+
+	if _, err := os.Stat(retired); !os.IsNotExist(err) {
+		t.Errorf("retired skill file %s should have been removed", retired)
+	}
+	if _, err := os.Stat(filepath.Dir(retired)); !os.IsNotExist(err) {
+		t.Errorf("emptied skill dir %s should have been removed", filepath.Dir(retired))
+	}
+	if _, err := os.Stat(foreign); err != nil {
+		t.Errorf("another skill in the shared dir must be left alone: %v", err)
+	}
+	// The bundle respec does render must still be there afterwards.
+	for _, rel := range []string{"SKILL.md", filepath.Join("agents", "openai.yaml")} {
+		if _, err := os.Stat(filepath.Join(skillsDir, "respec", rel)); err != nil {
+			t.Errorf("pruning removed a rendered skill file %s: %v", rel, err)
+		}
+	}
+}
+
 func TestInstallIsIdempotent(t *testing.T) {
 	home := runInstall(t, "pi")
 	research := filepath.Join(home, ".pi", "agent", "prompts", "rsx:research.md")
