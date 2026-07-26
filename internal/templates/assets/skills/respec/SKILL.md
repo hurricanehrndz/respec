@@ -129,6 +129,10 @@ either way. `manual` pauses at each phase gate and before each commit; `auto` ru
 final consolidated acceptance. Either way, stop for a plan mismatch, required access, unsafe dirty
 state, scope change, or high-impact action.
 
+Keep the effort's commits on their own branch: if HEAD is the repository's default branch, create
+`respec/<slug>` — or whatever convention the repository or operator states — before the first
+phase; if HEAD is already another branch, stay on it. Pushing is never yours to do.
+
 Per phase, sequentially:
 
 1. **Implement.** Use the phase's `**Agent:**` spec via `respec agent-cmd '<spec>' --prompt-file

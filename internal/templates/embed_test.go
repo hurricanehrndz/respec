@@ -314,6 +314,26 @@ func TestImplementHandlesBothExecutionModes(t *testing.T) {
 	}
 }
 
+// Commits must not pile onto the default branch: an effort's phases are only
+// reviewable and revertable together if they land on their own branch, and the
+// prompt is the only place that rule lives (see CLAUDE.md).
+func TestImplementWorksOnAnEffortBranch(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Store = "/tmp/s"
+	r, err := Render(cfg, TargetPi, Features{})
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	for _, want := range []string{"default branch", "respec/<change-dir basename>", "stay on it"} {
+		if !strings.Contains(r.Prompts["implement.md"], want) {
+			t.Errorf("implement.md should cover %q", want)
+		}
+	}
+	if !strings.Contains(r.Skills["respec/SKILL.md"], "respec/<slug>") {
+		t.Error("the skill's implement section should name the effort-branch default")
+	}
+}
+
 // Absent preferences must not produce invented staffing: a plan that names no
 // agent is complete, and the harness then does what it is configured to do.
 func TestPlanTellsAgentToInventNothingWithoutPreferences(t *testing.T) {

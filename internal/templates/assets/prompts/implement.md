@@ -48,6 +48,13 @@ mis-reviewed, or accidentally committed, stop and ask the operator how to isolat
 clarification, not a routine approval gate. Use `research.md`'s `repo_path` as the worked-on
 repository and run every subagent there.
 
+This effort's commits belong on their own branch, never on the repository's default branch. Before
+the first phase, look at HEAD: if it is the default branch (whatever `origin/HEAD` points at, else
+`main`/`master`), create the effort's branch and switch to it; if it is already some other branch,
+stay on it — the operator put you there deliberately. Name a new branch by the repository's or
+operator's stated convention when there is one, otherwise `respec/<change-dir basename>`. Name the
+branch in your reports. Pushing it and opening a PR stay the operator's call.
+
 Set the plan's `status` to `in-progress` when you begin. Existing checkmarks are trustworthy:
 resume from the first unchecked item rather than silently redoing finished work.
 

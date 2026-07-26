@@ -120,8 +120,9 @@ From any repo, in an agent session (the pi names are used below; Claude Code spe
    runs `respec stamp` to record the spec's hash. If a plan already exists, it amends it surgically
    and preserves its `execution_mode`.
 3. `/rsx:implement` — first runs `respec status --json`; if the spec changed since the plan was
-   stamped (`stale`), it stops and tells you to re-plan. Otherwise it runs each phase through the
-   same loop: implement, adversarial review, orchestrator gate, commit.
+   stamped (`stale`), it stops and tells you to re-plan. Otherwise it puts the work on a branch for
+   the effort (`respec/<slug>` unless the repo or you say otherwise) and runs each phase through the
+   same loop: implement, adversarial review, orchestrator gate, commit. Pushing stays yours.
 
 Artifacts remain in the central store; implementation changes land only in the worked-on repo.
 

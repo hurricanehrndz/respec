@@ -56,6 +56,17 @@ work is identical in both modes; only the gating differs. If a change makes the
 two modes diverge structurally, that is the signal something belongs in lint
 rather than in prompt prose.
 
+### Branch per effort: prompt guidance, not enforcement
+
+The implement prompt puts an effort's commits on their own branch, defaulting
+to `respec/<slug>`, and leaves an already-checked-out non-default branch alone.
+That stays prose rather than a `respec branch` command or a lint rule for two
+reasons: the default name is the change-dir basename, so there is nothing to
+compute; and an operator or repository with its own naming convention has to
+win over respec's default, which a lint rule cannot express. Pushing and PR
+creation remain the operator's call — the prompt creates and switches, never
+publishes.
+
 ### Acknowledged compromise: repo-slug derivation
 
 We aim for determinism but it isn't always practical. The `<owner-repo>`
