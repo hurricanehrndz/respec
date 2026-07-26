@@ -11,6 +11,7 @@ func runInstall(t *testing.T, target string) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("CODEX_HOME", "") // an inherited CODEX_HOME would install outside the temp HOME
 	rootCmd.SetArgs([]string{"install", "--target", target})
 	rootCmd.SetOut(os.NewFile(0, os.DevNull))
 	rootCmd.SetErr(os.NewFile(0, os.DevNull))
@@ -69,6 +70,56 @@ func TestInstallClaudeWritesUserScopeFiles(t *testing.T) {
 	skill := filepath.Join(home, ".claude", "skills", "respec", "SKILL.md")
 	if _, err := os.ReadFile(skill); err != nil {
 		t.Fatalf("expected installed skill %s: %v", skill, err)
+	}
+}
+
+func TestInstallCodexWritesUserScopeFiles(t *testing.T) {
+	home := runInstall(t, "codex")
+	codexHome := filepath.Join(home, ".codex")
+
+	prompts := []string{"rsx-research.md", "rsx-plan.md", "rsx-implement.md"}
+	for _, name := range prompts {
+		p := filepath.Join(codexHome, "prompts", name)
+		data, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("expected installed prompt %s: %v", p, err)
+		}
+		if strings.Contains(string(data), "{{") {
+			t.Errorf("%s has unexpanded template directives", name)
+		}
+		for _, forbidden := range []string{"$@", "${1:", "/rsx:", "~/.pi/", "~/.claude/"} {
+			if strings.Contains(string(data), forbidden) {
+				t.Errorf("%s contains foreign-agent syntax %q", name, forbidden)
+			}
+		}
+	}
+
+	// Codex reads the skill's display metadata from agents/openai.yaml, so the
+	// whole bundle must land, not just SKILL.md.
+	for _, rel := range []string{"SKILL.md", filepath.Join("agents", "openai.yaml")} {
+		p := filepath.Join(codexHome, "skills", "respec", rel)
+		if _, err := os.ReadFile(p); err != nil {
+			t.Fatalf("expected installed skill file %s: %v", p, err)
+		}
+	}
+}
+
+func TestInstallCodexHonorsCodexHome(t *testing.T) {
+	home := t.TempDir()
+	codexHome := filepath.Join(home, "custom-codex")
+	t.Setenv("HOME", home)
+	t.Setenv("CODEX_HOME", codexHome)
+	rootCmd.SetArgs([]string{"install", "--target", "codex"})
+	rootCmd.SetOut(os.NewFile(0, os.DevNull))
+	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("install --target codex: %v", err)
+	}
+	if _, err := os.ReadFile(filepath.Join(codexHome, "prompts", "rsx-plan.md")); err != nil {
+		t.Fatalf("expected Codex prompt under CODEX_HOME: %v", err)
+	}
+	if _, err := os.ReadFile(filepath.Join(codexHome, "skills", "respec", "SKILL.md")); err != nil {
+		t.Fatalf("expected Codex skill under CODEX_HOME: %v", err)
 	}
 }
 

@@ -2,9 +2,9 @@
 
 ## Design principle: deterministic when possible
 
-The CLI owns everything that code can answer; the agent (running the `/rsx:*`
-prompts) is used only for judgment — research, planning, implementation. If a
-value can be computed deterministically (dates, git metadata, hashes, YAML
+The CLI owns everything that code can answer; the agent (running the installed
+workflow prompts) is used only for judgment — research, planning,
+implementation. If a value can be computed deterministically (dates, git metadata, hashes, YAML
 manipulation, formatting), it belongs in the CLI, not in a prompt instructing
 the agent to shell out and hand-write it.
 

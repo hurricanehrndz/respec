@@ -1,0 +1,4 @@
+interface:
+  display_name: "Respec"
+  short_description: "Drive research, planning, and implementation"
+  default_prompt: "Use $respec to research, plan, or implement this change."

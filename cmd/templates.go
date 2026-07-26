@@ -15,7 +15,7 @@ import (
 func init() {
 	parent := &cobra.Command{
 		Use:   "templates",
-		Short: "Inspect and customize the /rsx:* prompt and skill templates",
+		Short: "Inspect and customize the workflow prompt and skill templates",
 	}
 	parent.AddCommand(templatesListCmd(), templatesEjectCmd())
 	rootCmd.AddCommand(parent)

@@ -159,7 +159,7 @@ the current spec.
 ## CLI reference
 
     respec config get|set|path           # configuration (~/.config/respec/config.yaml)
-    respec install --target <agent>      # (re)install these prompts + this skill at user scope (pi | claude)
+    respec install --target <agent>      # (re)install at user scope (pi | claude | codex)
     respec stamp <change-dir> [--repo <path>]  # write provenance + spec_sha256, then reflow the artifacts
                                          # (--repo: the worked-on repo, when the session runs elsewhere;
                                          #  stamp refuses to record the store itself as provenance)

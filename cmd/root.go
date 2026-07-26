@@ -17,7 +17,7 @@ var rootCmd = &cobra.Command{
 	Short:   "Single-operator, spec-driven research → plan → implement workflow tool",
 	Long: `respec drives a research → plan → implement workflow backed by a single
 central store. The CLI does deterministic plumbing only: hold config, render and
-install the /rsx:* pi prompt-templates, stamp/compare staleness, reflow prose, and
+install the agent prompt-templates, stamp/compare staleness, reflow prose, and
 render/serve the store as a Hugo site.`,
 }
 

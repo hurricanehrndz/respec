@@ -15,14 +15,14 @@ import (
 func init() {
 	var targetName string
 	cmd := &cobra.Command{
-		Use:   "install --target <pi|claude>",
+		Use:   "install --target <pi|claude|codex>",
 		Short: "Render and install the prompt-templates and skill at user scope for an agent",
 		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			target, ok := templates.Targets[targetName]
 			if !ok {
 				c.SilenceUsage = true
-				return fmt.Errorf("unknown --target %q (valid: pi, claude)", targetName)
+				return fmt.Errorf("unknown --target %q (valid: pi, claude, codex)", targetName)
 			}
 			cfg, err := config.Load()
 			if err != nil {
@@ -40,7 +40,7 @@ func init() {
 			return installFor(c, target, home, rendered)
 		},
 	}
-	cmd.Flags().StringVar(&targetName, "target", "", "agent to install for: pi or claude (required)")
+	cmd.Flags().StringVar(&targetName, "target", "", "agent to install for: pi, claude, or codex (required)")
 	_ = cmd.MarkFlagRequired("target")
 	rootCmd.AddCommand(cmd)
 }
@@ -78,6 +78,16 @@ func installFor(c *cobra.Command, target templates.Target, home string, rendered
 		promptsDir = filepath.Join(home, ".claude", "commands")
 		prefix = "rsx-"
 		skillsDir = filepath.Join(home, ".claude", "skills")
+	case templates.TargetCodex:
+		// Codex keeps custom prompts and skills under CODEX_HOME (~/.codex by
+		// default) and invokes the prompts as /prompts:rsx-*.
+		codexHome := os.Getenv("CODEX_HOME")
+		if codexHome == "" {
+			codexHome = filepath.Join(home, ".codex")
+		}
+		promptsDir = filepath.Join(codexHome, "prompts")
+		prefix = "rsx-"
+		skillsDir = filepath.Join(codexHome, "skills")
 	default:
 		return fmt.Errorf("no install layout for target %q", target.Name)
 	}

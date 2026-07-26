@@ -30,49 +30,53 @@ const EmbeddedSource = "embedded"
 // agent-agnostic; everything agent-specific — argument placeholders, installed
 // command names, where the skill lives — resolves through Target's methods.
 type Target struct {
-	Name string // "pi" | "claude"
+	Name string // "pi" | "claude" | "codex"
 }
 
 var (
 	TargetPi     = Target{Name: "pi"}
 	TargetClaude = Target{Name: "claude"}
+	TargetCodex  = Target{Name: "codex"}
 
 	// Targets maps a --target flag value to its Target.
-	Targets = map[string]Target{"pi": TargetPi, "claude": TargetClaude}
+	Targets = map[string]Target{"pi": TargetPi, "claude": TargetClaude, "codex": TargetCodex}
 )
 
 // IsClaude reports whether templates are being rendered for Claude Code.
 func (t Target) IsClaude() bool { return t.Name == TargetClaude.Name }
 
+// IsCodex reports whether templates are being rendered for OpenAI Codex.
+func (t Target) IsCodex() bool { return t.Name == TargetCodex.Name }
+
 // AllArgs is the placeholder expanding to the invocation's whole argument string.
 func (t Target) AllArgs() string {
-	if t.IsClaude() {
+	if t.IsClaude() || t.IsCodex() {
 		return "$ARGUMENTS"
 	}
 	return "$@"
 }
 
 // Arg1Or is the first-argument placeholder with a fallback when absent. Claude
-// Code has no default syntax (bash-style ${1:-...} is unsupported), so there
-// the surrounding prose must carry the fallback and the raw placeholder is
-// emitted; pi embeds the default.
+// Code and Codex have no default syntax (bash-style ${1:-...} is unsupported),
+// so there the surrounding prose must carry the fallback and the raw
+// placeholder is emitted; pi embeds the default.
 func (t Target) Arg1Or(def string) string {
-	if t.IsClaude() {
+	if t.IsClaude() || t.IsCodex() {
 		return "$ARGUMENTS"
 	}
 	return "${1:-" + def + "}"
 }
 
-// Arg1Req is the first-argument placeholder for a required argument. Neither
-// target can enforce required-ness in the placeholder itself: pi's template
-// engine substitutes $@, $1, ${1:-default}, and ${@:N} but NOT bash's ${1:?msg}
-// error form — that pattern is left literal, so the agent sees the raw
-// placeholder and treats the arg as missing. Claude Code has no such syntax at
-// all. Both therefore emit a plain all-args placeholder and rely on the
+// Arg1Req is the first-argument placeholder for a required argument. No target
+// can enforce required-ness in the placeholder itself: pi's template engine
+// substitutes $@, $1, ${1:-default}, and ${@:N} but NOT bash's ${1:?msg} error
+// form — that pattern is left literal, so the agent sees the raw placeholder
+// and treats the arg as missing. Claude Code and Codex have no such syntax at
+// all. All therefore emit a plain all-args placeholder and rely on the
 // surrounding prose ("required — stop and ask if missing") to enforce it. msg
 // is retained to document the argument at the call site.
 func (t Target) Arg1Req(msg string) string {
-	if t.IsClaude() {
+	if t.IsClaude() || t.IsCodex() {
 		return "$ARGUMENTS"
 	}
 	return "$@"
@@ -80,8 +84,12 @@ func (t Target) Arg1Req(msg string) string {
 
 // Cmd returns the installed command name for a prompt. pi namespaces with a
 // colon (/rsx:plan); Claude Code user-scope command names cannot contain one,
-// so the namespace flattens to a hyphen (/rsx-plan).
+// so the namespace flattens to a hyphen (/rsx-plan); Codex exposes files in its
+// prompts dir under a prompts: namespace (/prompts:rsx-plan).
 func (t Target) Cmd(name string) string {
+	if t.IsCodex() {
+		return "/prompts:rsx-" + name
+	}
 	if t.IsClaude() {
 		return "/rsx-" + name
 	}
@@ -90,6 +98,9 @@ func (t Target) Cmd(name string) string {
 
 // SkillPath is where the installed respec skill lives at user scope.
 func (t Target) SkillPath() string {
+	if t.IsCodex() {
+		return "${CODEX_HOME:-$HOME/.codex}/skills/respec/SKILL.md"
+	}
 	if t.IsClaude() {
 		return "~/.claude/skills/respec/SKILL.md"
 	}
@@ -98,6 +109,9 @@ func (t Target) SkillPath() string {
 
 // SkillCmd is how the operator invokes the respec skill interactively.
 func (t Target) SkillCmd() string {
+	if t.IsCodex() {
+		return "$respec"
+	}
 	if t.IsClaude() {
 		return "/respec"
 	}
@@ -177,7 +191,10 @@ func Resolve(cfg config.Config) ([]TemplateFile, error) {
 			if err != nil {
 				return err
 			}
-			if d.IsDir() || path.Base(p) != "SKILL.md" {
+			// Every file in the bundle ships, not just SKILL.md: Codex reads
+			// agents/openai.yaml for the skill's display metadata, and an extra
+			// file is inert for the targets that do not read it.
+			if d.IsDir() {
 				return nil
 			}
 			add(TemplateFile{Name: p, Key: strings.TrimPrefix(p, "skills/"), IsSkill: true, Source: source, fsys: fsys, path: p})

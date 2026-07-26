@@ -3,13 +3,14 @@
 `respec` drives a `research → plan → implement` workflow for a single operator.
 All artifacts live in **one central store** (a git repo you own), never in the
 repo you are working on. The actual reasoning is done by the agent — running in
-[pi](https://github.com/earendil-works/pi) or
-[Claude Code](https://code.claude.com) — executing installed prompt-templates
-(`/rsx:*` in pi, `/rsx-*` in Claude Code); the `respec` CLI does deterministic
-plumbing only:
+[pi](https://github.com/earendil-works/pi),
+[Claude Code](https://code.claude.com), or
+[OpenAI Codex](https://developers.openai.com/codex/) — executing installed
+prompt-templates (`/rsx:*` in pi, `/rsx-*` in Claude Code, `/prompts:rsx-*` in
+Codex); the `respec` CLI does deterministic plumbing only:
 
 - hold config (store path, optional injected context/rules),
-- render and install the research, plan, auto-plan, implement, and auto-implement prompts + backing skill at user scope,
+- render and install the research, plan, and implement prompts + backing skill at user scope,
 - stamp deterministic frontmatter — provenance (date, repo, git commit) and the
   spec→plan staleness hash — and auto-reflow the artifacts,
 - validate artifacts (`lint`) and reflow prose without touching structure,
@@ -25,8 +26,9 @@ Required:
 - **git** — respec's model is git-based: `respec stamp` reads provenance
   (repo, commit) from the worked-on repo, and the central store is a git repo
   you own.
-- **An agent** — [pi](https://github.com/earendil-works/pi) and/or
-  [Claude Code](https://code.claude.com); the prompts run there.
+- **An agent** — [pi](https://github.com/earendil-works/pi),
+  [Claude Code](https://code.claude.com), and/or
+  [OpenAI Codex](https://developers.openai.com/codex/); the prompts run there.
 
 Optional, for the best experience:
 
@@ -77,7 +79,8 @@ go install github.com/hurricanehrndz/respec@latest
 
 respec config set store ~/respec-store   # central store (default: ~/respec-store)
 respec install --target pi               # render + install prompts and the respec skill
-respec install --target claude           # same, for Claude Code (run both if you use both)
+respec install --target claude           # same, for Claude Code
+respec install --target codex            # same, for OpenAI Codex (run each agent you use)
 ```
 
 `--target pi` writes the prompts to
@@ -85,8 +88,12 @@ respec install --target claude           # same, for Claude Code (run both if yo
 `~/.pi/agent/skills/respec/`. `--target claude` writes the commands to
 `~/.claude/commands/rsx-{research,plan,implement}.md` (Claude Code command
 names cannot contain a colon, so there the workflow uses `/rsx-*`) and the skill to
-`~/.claude/skills/respec/`.
-The store path is baked in either way. Re-running is idempotent; it overwrites
+`~/.claude/skills/respec/`. `--target codex` writes
+`$CODEX_HOME/prompts/rsx-{research,plan,implement}.md` and the skill bundle
+(including the `agents/openai.yaml` display metadata Codex reads) to
+`$CODEX_HOME/skills/respec/`, defaulting `CODEX_HOME` to `~/.codex`; Codex
+invokes those prompts as `/prompts:rsx-*`.
+The store path is baked in for every target. Re-running is idempotent; it overwrites
 the respec-owned files with a fresh render, so run it again after changing
 config. It also removes any retired `rsx:`/`rsx-` prompt it no longer renders,
 so a command that no longer exists cannot linger and be invoked.
@@ -102,7 +109,8 @@ faster and cheaper, so the prompts pair grep-to-locate with extract-to-read.
 
 ## Workflow
 
-From any repo, in an agent session (Claude Code names are `/rsx-research` etc.):
+From any repo, in an agent session (the pi names are used below; Claude Code spells them
+`/rsx-research` etc., Codex `/prompts:rsx-research` etc.):
 
 1. `/rsx:research <topic>` — an interview-driven exploration that writes `research.md` into
    `<store>/<owner-repo>/<slug>/` (efforts are grouped by the primary repo they affect), then runs
@@ -139,7 +147,7 @@ anywhere but the final phase is rejected, because it would stall an unattended r
 | --- | --- |
 | `respec config get\|set <key> [value]` | Read/write `~/.config/respec/config.yaml` |
 | `respec config path` | Print the config file path |
-| `respec install --target <pi\|claude>` | Render + install the prompts and skill at user scope for that agent |
+| `respec install --target <pi\|claude\|codex>` | Render + install the prompts and skill at user scope for that agent |
 | `respec stamp <change-dir> [--repo <path>]` | Write provenance + `spec_sha256` into the artifacts, then reflow them |
 | `respec status <change-dir> [--json]` | Report `fresh` / `stale` / `unstamped` plus per-artifact status |
 | `respec list [--json]` | List every effort in the store, grouped by repo, with status/staleness |

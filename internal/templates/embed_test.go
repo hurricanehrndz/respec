@@ -172,6 +172,10 @@ func TestRenderPerTarget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render claude: %v", err)
 	}
+	codex, err := Render(cfg, TargetCodex, Features{})
+	if err != nil {
+		t.Fatalf("Render codex: %v", err)
+	}
 
 	// pi keeps its bash-flavored placeholders, skill path, and colon namespace.
 	if !strings.Contains(pi.Prompts["research.md"], "Topic: $@") {
@@ -226,6 +230,35 @@ func TestRenderPerTarget(t *testing.T) {
 	if !strings.Contains(claude.Skills["respec/SKILL.md"], "/rsx-research") {
 		t.Error("claude skill should reference /rsx-research")
 	}
+
+	// Codex shares Claude's placeholder syntax but has its own command
+	// namespace, skill path, and skill-mention form.
+	for name, content := range codex.Prompts {
+		for _, forbidden := range []string{"$@", "${1:", "/rsx:", "~/.pi/", "~/.claude/"} {
+			if strings.Contains(content, forbidden) {
+				t.Errorf("codex prompt %s contains foreign-agent syntax %q", name, forbidden)
+			}
+		}
+	}
+	if !strings.Contains(codex.Prompts["research.md"], "Topic: $ARGUMENTS") {
+		t.Error("codex research.md should pass arguments via $ARGUMENTS")
+	}
+	if !strings.Contains(codex.Prompts["research.md"], "${CODEX_HOME:-$HOME/.codex}/skills/respec/SKILL.md") ||
+		!strings.Contains(codex.Prompts["research.md"], "$respec") {
+		t.Error("codex prompts should reference the Codex respec skill")
+	}
+	if !strings.Contains(codex.Prompts["implement.md"], "/prompts:rsx-plan") {
+		t.Error("codex implement.md should reference /prompts:rsx-plan")
+	}
+	if !strings.Contains(codex.Prompts["implement.md"], "respec agent-cmd") {
+		t.Error("codex implement.md should build child commands with respec agent-cmd")
+	}
+	if !strings.Contains(codex.Skills["respec/SKILL.md"], "/prompts:rsx-research") {
+		t.Error("codex skill should reference /prompts:rsx-research")
+	}
+	if meta, ok := codex.Skills["respec/agents/openai.yaml"]; !ok || !strings.Contains(meta, "$respec") {
+		t.Error("the skill bundle should ship Codex's agents/openai.yaml metadata")
+	}
 }
 
 func TestRenderRejectsUnknownTarget(t *testing.T) {
@@ -242,7 +275,7 @@ func TestImplementDoesNotHardcodeChildHarness(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
 
-	for _, target := range []Target{TargetPi, TargetClaude} {
+	for _, target := range []Target{TargetPi, TargetClaude, TargetCodex} {
 		r, err := Render(cfg, target, Features{})
 		if err != nil {
 			t.Fatalf("Render %s: %v", target.Name, err)
