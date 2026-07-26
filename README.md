@@ -32,9 +32,9 @@ Optional, for the best experience:
 
 - **[Hugo](https://gohugo.io)** — required only by `respec render` / `respec
   serve`, which build the store into a browsable site (with Mermaid diagrams).
-- **[probe](https://github.com/probelabs/probe)** — local semantic code
-  search; when on PATH at install time, the research prompt steers the agent
-  to explore with it (see below).
+- **[probe](https://github.com/probelabs/probe)** — tree-sitter symbol
+  extraction; when on PATH at install time, the research and plan prompts
+  steer the agent to pull single definitions with it (see below).
 - **[pre-commit](https://pre-commit.com)** — if your store repo uses the
   framework, this repo ships `respec-format` hooks to guard Markdown
   formatting (a standalone `respec install-hook` alternative needs nothing
@@ -90,10 +90,14 @@ The store path is baked in either way. Re-running is idempotent; it overwrites
 the respec-owned files with a fresh render, so run it again after changing
 config.
 
-If [probe](https://github.com/probelabs/probe) (local semantic code search) is
-on PATH at install time, the research prompt additionally steers the agent to
-explore with `probe search`/`probe extract`; without it the prompts never
+If [probe](https://github.com/probelabs/probe) is on PATH at install time, the
+research and plan prompts additionally steer the agent to pull single
+definitions with `probe extract <file>#<symbol>`; without it the prompts never
 mention probe. Install probe, then re-run `respec install`, to enable it.
+
+Only `probe extract` is used. `probe search` ranks whole files by BM25 and, on
+a repo this size, returns most of the tree for an ordinary query — grep locates
+faster and cheaper, so the prompts pair grep-to-locate with extract-to-read.
 
 ## Workflow
 

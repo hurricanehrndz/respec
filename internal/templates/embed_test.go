@@ -258,7 +258,7 @@ func TestRenderGatesProbeGuidance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render with probe: %v", err)
 	}
-	if !strings.Contains(with.Prompts["research.md"], "probe search") {
+	if !strings.Contains(with.Prompts["research.md"], "probe extract") {
 		t.Error("probe guidance missing from research.md when probe is available")
 	}
 

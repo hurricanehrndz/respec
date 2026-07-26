@@ -30,10 +30,9 @@ Your job this phase:
    feedback loop available (existing E2E/integration suite, CLI smoke test, rendered output, or a
    real request through the public boundary). Ask early if credentials, services, hardware, or
    setup are required so verification is not discovered to be impossible during implementation.{{if .HasProbe}}
-   `probe` is installed — prefer it over plain grep-and-read for inspection; it returns whole
-   semantic blocks (functions, classes) ranked by relevance, which keeps context small:
+   `probe` is installed — use it to pull a single definition without reading the whole file,
+   which is usually how you verify that a symbol or signature the plan will name still exists:
 
-       probe search "<terms>" <path>    # Elasticsearch-style query: AND / OR / NOT
        probe extract <file>#<symbol>    # pull one function/class by name
        probe extract <file>:<line>      # pull the block containing a line
 {{end}}

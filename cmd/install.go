@@ -51,7 +51,7 @@ func detectFeatures(c *cobra.Command) templates.Features {
 	feats := templates.Features{}
 	if _, err := exec.LookPath("probe"); err == nil {
 		feats.Probe = true
-		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe found on PATH: prompts include probe search guidance")
+		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe found on PATH: prompts include probe extract guidance")
 	} else {
 		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe not found on PATH: prompts omit probe guidance (re-run install after installing it)")
 	}

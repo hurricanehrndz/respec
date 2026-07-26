@@ -35,10 +35,10 @@ evidence-based view, and converge with the operator on the decisions the plan mu
    either way. An agent without a subagent feature can spawn a fresh instance of itself via the
    shell. If you run low on context, record what remains under **Open Questions** and continue in
    a fresh session that starts from the artifact.{{if .HasProbe}}
-   `probe` is installed — prefer it over plain grep-and-read for exploration; it returns whole
-   semantic blocks (functions, classes) ranked by relevance, which keeps context small:
+   `probe` is installed — use it to pull a single definition without reading the whole file
+   (it is tree-sitter backed, so it returns the exact block and names the ambiguity when a
+   symbol resolves more than once). Locate with grep, then extract:
 
-       probe search "<terms>" <path>    # Elasticsearch-style query: AND / OR / NOT
        probe extract <file>#<symbol>    # pull one function/class by name
        probe extract <file>:<line>      # pull the block containing a line
 {{end}}

@@ -27,9 +27,8 @@ ask them together as early as possible. Do not write a plan around an unresolved
 
 1. Read `research.md` completely. Its **Decisions** are settled constraints; do not re-litigate
    them. Read existing `spec.md` and `plan.md` completely when present.{{if .HasProbe}}
-   `probe` is installed — prefer it for focused inspection:
+   `probe` is installed — use it to pull a single definition without reading the whole file:
 
-       probe search "<terms>" <path>
        probe extract <file>#<symbol>
        probe extract <file>:<line>
 {{end}}
