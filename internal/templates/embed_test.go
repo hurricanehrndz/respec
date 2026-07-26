@@ -186,18 +186,12 @@ func TestRenderPerTarget(t *testing.T) {
 	if !strings.Contains(pi.Prompts["implement.md"], "/rsx:plan") {
 		t.Error("pi implement.md should reference /rsx:plan")
 	}
-	if !strings.Contains(pi.Prompts["implement-auto.md"], "pi --print --no-session --thinking medium") {
-		t.Error("pi implement-auto.md should spawn isolated medium-effort pi children")
+	if !strings.Contains(pi.Prompts["implement.md"], "respec agent-cmd") {
+		t.Error("pi implement.md should build child commands with respec agent-cmd")
 	}
-	if !strings.Contains(pi.Prompts["implement-auto.md"], "pi --print --no-session --thinking low") {
-		t.Error("pi implement-auto.md should delegate commits to low-effort pi children")
-	}
-	if !strings.Contains(pi.Prompts["plan-auto.md"], "execution_mode: auto") ||
-		!strings.Contains(pi.Prompts["plan-auto.md"], "runnable E2E/smoke command") {
-		t.Error("pi plan-auto.md should persist auto mode and require end-to-end feedback")
-	}
-	if !strings.Contains(pi.Prompts["implement-auto.md"], "/rsx:plan-auto") {
-		t.Error("pi implement-auto.md should reference /rsx:plan-auto")
+	if !strings.Contains(pi.Prompts["plan.md"], "execution_mode") ||
+		!strings.Contains(pi.Prompts["plan.md"], "runnable E2E/smoke command") {
+		t.Error("pi plan.md should set the execution mode and require end-to-end feedback")
 	}
 	// The required change-dir must use a placeholder pi actually substitutes.
 	// pi supports $@/$1/${1:-default} but NOT bash's ${1:?msg}, which would
@@ -207,9 +201,6 @@ func TestRenderPerTarget(t *testing.T) {
 	}
 	if strings.Contains(pi.Prompts["implement.md"], "${1:?") {
 		t.Error("pi implement.md must not use ${1:?...}; pi leaves it literal")
-	}
-	if !strings.Contains(pi.Prompts["implement-auto.md"], "missing): $@") {
-		t.Error("pi implement-auto.md should pass the required change dir via $@")
 	}
 
 	// Claude Code has no bash-style placeholders and no colons in command names.
@@ -229,14 +220,8 @@ func TestRenderPerTarget(t *testing.T) {
 	if !strings.Contains(claude.Prompts["implement.md"], "/rsx-plan") {
 		t.Error("claude implement.md should reference /rsx-plan")
 	}
-	if !strings.Contains(claude.Prompts["implement-auto.md"], "env -u CLAUDECODE claude --print --no-session-persistence --effort medium") {
-		t.Error("claude implement-auto.md should spawn isolated medium-effort Claude children")
-	}
-	if !strings.Contains(claude.Prompts["implement-auto.md"], "env -u CLAUDECODE claude --print --no-session-persistence --effort low") {
-		t.Error("claude implement-auto.md should delegate commits to low-effort Claude children")
-	}
-	if !strings.Contains(claude.Prompts["implement-auto.md"], "/rsx-plan-auto") {
-		t.Error("claude implement-auto.md should reference /rsx-plan-auto")
+	if !strings.Contains(claude.Prompts["implement.md"], "respec agent-cmd") {
+		t.Error("claude implement.md should build child commands with respec agent-cmd")
 	}
 	if !strings.Contains(claude.Skills["respec/SKILL.md"], "/rsx-research") {
 		t.Error("claude skill should reference /rsx-research")
@@ -246,6 +231,85 @@ func TestRenderPerTarget(t *testing.T) {
 func TestRenderRejectsUnknownTarget(t *testing.T) {
 	if _, err := Render(config.Defaults(), Target{Name: "emacs"}, Features{}); err == nil {
 		t.Fatal("expected error for unknown target")
+	}
+}
+
+// The child harness is chosen per phase in the plan, not frozen when the
+// operator ran `respec install`. If a rendered prompt hardcoded a child
+// invocation again, a Claude-installed orchestrator could never delegate to pi
+// (and vice versa), which is the whole point of the per-phase matrix.
+func TestImplementDoesNotHardcodeChildHarness(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Store = "/tmp/s"
+
+	for _, target := range []Target{TargetPi, TargetClaude} {
+		r, err := Render(cfg, target, Features{})
+		if err != nil {
+			t.Fatalf("Render %s: %v", target.Name, err)
+		}
+		got := r.Prompts["implement.md"]
+		for _, frozen := range []string{
+			"pi --print --no-session --thinking",
+			"claude --print --no-session-persistence",
+			"codex exec --model",
+		} {
+			if strings.Contains(got, frozen) {
+				t.Errorf("%s implement.md hardcodes a child invocation %q; it must come from the plan's **Agent:** line via respec agent-cmd", target.Name, frozen)
+			}
+		}
+		if !strings.Contains(got, "**Agent:**") {
+			t.Errorf("%s implement.md should read the phase's **Agent:** line", target.Name)
+		}
+	}
+}
+
+// One implement prompt serves both modes, reading execution_mode from the plan
+// rather than being chosen at invocation. Splitting it again would reintroduce
+// two prompts that differ only in when the operator is consulted.
+func TestImplementHandlesBothExecutionModes(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Store = "/tmp/s"
+	r, err := Render(cfg, TargetPi, Features{})
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := r.Prompts["implement.md"]
+	for _, want := range []string{"execution_mode", "manual", "auto", "Adversarial review"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("implement.md should cover %q", want)
+		}
+	}
+}
+
+// Absent preferences must not produce invented staffing: a plan that names no
+// agent is complete, and the harness then does what it is configured to do.
+func TestPlanTellsAgentToInventNothingWithoutPreferences(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Store = "/tmp/s"
+
+	bare, err := Render(cfg, TargetPi, Features{})
+	if err != nil {
+		t.Fatalf("Render without preferences: %v", err)
+	}
+	if !strings.Contains(bare.Prompts["plan.md"], "do not invent any") {
+		t.Error("with no preferences, plan.md must tell the agent not to invent staffing")
+	}
+
+	cfg.Agents = config.Agents{
+		Implementer: "pi:openai-codex/gpt-5.6-sol@medium",
+		Reviewer:    "claude:opus",
+	}
+	stated, err := Render(cfg, TargetPi, Features{})
+	if err != nil {
+		t.Fatalf("Render with preferences: %v", err)
+	}
+	for _, want := range []string{"pi:openai-codex/gpt-5.6-sol@medium", "claude:opus"} {
+		if !strings.Contains(stated.Prompts["plan.md"], want) {
+			t.Errorf("stated preference %q missing from plan.md", want)
+		}
+	}
+	if strings.Contains(stated.Prompts["plan.md"], "do not invent any") {
+		t.Error("with preferences stated, the no-preferences branch must not render")
 	}
 }
 

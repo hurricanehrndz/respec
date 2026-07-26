@@ -16,46 +16,41 @@ Load the detailed workflow before doing anything else: read the `respec` skill a
 `{{.SkillPath}}` (or invoke `{{.SkillCmd}}`). Follow it.
 
 Research here **drives toward alignment**, not neutral archaeology. You explore, form an
-evidence-based view, and converge with the operator on the decisions the plan must stand on. So:
+evidence-based view, and converge with the operator on the decisions the plan will stand on.
 
-1. **Establish the motivation.** Record why the change is being requested or initiated, including
-   the triggering problem or opportunity and why it matters now. Use evidence or operator input;
-   if the motivation is unclear, ask rather than infer it.
-2. **Explore the code first** to ground every finding in reality; capture concrete `file:line`
-   references. Read any files the operator names **in full, first**, then work the topic as a few
-   distinct research questions: *where* do the relevant files and components live, *how* does the
-   specific code actually work, and *how* does this codebase already solve similar problems. The
-   ground truth may also be external — candidate tools, APIs, prior art — and "almost nothing
-   exists in the codebase yet" is itself a finding. **Default to exploring in the open, in this
-   session** — the operator steers the exploration live, and everything worth keeping is distilled
-   into `research.md`, the artifact that hands later sessions their context. Your context window
-   is disposable; the artifact is not. Before reaching for subagents, gauge the scale (count and
-   size the relevant files/dirs): only when the codebase is large enough that the bulk reading
-   would drown this session, delegate the bulk reads — and keep the dialogue and synthesis here
-   either way. An agent without a subagent feature can spawn a fresh instance of itself via the
-   shell. If you run low on context, record what remains under **Open Questions** and continue in
-   a fresh session that starts from the artifact.{{if .HasProbe}}
-   `probe` is installed — use it to pull a single definition without reading the whole file
-   (it is tree-sitter backed, so it returns the exact block and names the ambiguity when a
-   symbol resolves more than once). Locate with grep, then extract:
+Ground every finding in code you actually read, with concrete `file:line` references. Read any
+files the operator names in full first, then work the topic as a few distinct questions: where the
+relevant components live, how the specific code actually works, and how this codebase already
+solves similar problems. Ground truth may be external too — candidate tools, APIs, prior art — and
+"almost nothing exists here yet" is itself a finding worth recording.{{if .HasProbe}}
+`probe` is installed — use it to pull a single definition without reading the whole file
+(it is tree-sitter backed, so it returns the exact block and names the ambiguity when a
+symbol resolves more than once). Locate with grep, then extract:
 
-       probe extract <file>#<symbol>    # pull one function/class by name
-       probe extract <file>:<line>      # pull the block containing a line
+    probe extract <file>#<symbol>    # pull one function/class by name
+    probe extract <file>:<line>      # pull the block containing a line
 {{end}}
-3. **Keep evidence honest.** Separate what you verified by reading code or probing first-hand
-   from what a doc, comment, or vendor claims. For external tools and services, prefer running
-   the thing over restating its README.
-4. **Ask what evidence cannot answer.** Bring the operator the questions inspection cannot
-   settle — intent, priorities, tradeoff calls — and offer interpretations when the topic is
-   ambiguous. Questions are not a substitute for investigation.
-5. **No silent assumptions.** When something material is not immediately obvious: verify it; if
-   you cannot verify it, ask; if it stays unresolved, record it under **Open Questions** as an
-   explicit unknown. Never present an assumption as a finding.
-6. **Take a position.** When more than one path exists, lay out the candidates with pros and
-   cons and recommend one, with reasoning. If the evidence genuinely favors neither, say it is a
-   coin flip — a recorded coin flip is still alignment.
-7. **Record decisions.** When the operator makes the call, write it into **Decisions** with the
-   reasoning so the plan phase treats it as settled.
+The operator steers this exploration live, and everything worth keeping is distilled into
+`research.md`, the artifact that hands later sessions their context. Your context window is
+disposable; the artifact is not — so delegate the bulk reading whose output you would never
+re-read, and keep the dialogue and the synthesis here. The skill's Delegation section covers when
+and how. If you run low on context, record what remains under **Open Questions** and continue in a
+fresh session that starts from the artifact.
+
+Record why this change is being asked for — the triggering problem or opportunity, and why it
+matters now. Ask rather than infer when the motivation is unclear.
+
+Keep the evidence honest. Separate what you verified by reading code or running the thing from what
+a doc, comment, or vendor claims; for external tools and services, prefer first-hand observation
+over the README. When something material is not obvious, verify it, ask, or record it under **Open
+Questions** as an explicit unknown — an assumption dressed as a finding is the one failure this
+phase cannot recover from, because every later phase treats research as settled ground.
+
+Take a position. Where several paths exist, lay out the candidates with pros and cons and recommend
+one with your reasoning; if the evidence genuinely favours neither, say so — a recorded coin flip
+is still alignment. Bring the operator the questions inspection cannot settle (intent, priorities,
+tradeoff calls), but questions are not a substitute for investigation. When the operator makes a
+call, write it into **Decisions** with the reasoning so the plan phase treats it as settled.
 
 Create the change directory under the store, grouped by the **primary repo** you are working in
 and named by a short slug:

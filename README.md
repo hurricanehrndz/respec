@@ -81,14 +81,15 @@ respec install --target claude           # same, for Claude Code (run both if yo
 ```
 
 `--target pi` writes the prompts to
-`~/.pi/agent/prompts/rsx:{research,plan,plan-auto,implement,implement-auto}.md` and the skill to
+`~/.pi/agent/prompts/rsx:{research,plan,implement}.md` and the skill to
 `~/.pi/agent/skills/respec/`. `--target claude` writes the commands to
-`~/.claude/commands/rsx-{research,plan,plan-auto,implement,implement-auto}.md` (Claude Code command
+`~/.claude/commands/rsx-{research,plan,implement}.md` (Claude Code command
 names cannot contain a colon, so there the workflow uses `/rsx-*`) and the skill to
 `~/.claude/skills/respec/`.
 The store path is baked in either way. Re-running is idempotent; it overwrites
 the respec-owned files with a fresh render, so run it again after changing
-config.
+config. It also removes any retired `rsx:`/`rsx-` prompt it no longer renders,
+so a command that no longer exists cannot linger and be invoked.
 
 If [probe](https://github.com/probelabs/probe) is on PATH at install time, the
 research and plan prompts additionally steer the agent to pull single
@@ -111,23 +112,26 @@ From any repo, in an agent session (Claude Code names are `/rsx-research` etc.):
    runs `respec stamp` to record the spec's hash. If a plan already exists, it amends it surgically
    and preserves its `execution_mode`.
 3. `/rsx:implement` — first runs `respec status --json`; if the spec changed since the plan was
-   stamped (`stale`), it stops and tells you to re-plan. Otherwise it executes the manual plan's
-   phases. The orchestrator performs every feasible Manual check and pauses only for checks that
-   genuinely require the operator.
-
-Auto variants remove intermediate operator gates:
-
-- `/rsx:plan-auto` resolves non-blocking choices autonomously, asks necessary setup/clarification
-  questions early, writes `execution_mode: auto`, and requires a runnable E2E/integration/smoke
-  check.
-- `/rsx:implement-auto` runs each phase as a medium-effort Pi or Claude child, has the orchestrator
-  review and verify the result, then uses a low-effort child to commit the accepted phase. It asks
-  the operator only for blockers or the final consolidated acceptance.
-
-Claude Code spells these commands `/rsx-plan-auto` and `/rsx-implement-auto`; Pi uses
-`/rsx:plan-auto` and `/rsx:implement-auto`.
+   stamped (`stale`), it stops and tells you to re-plan. Otherwise it runs each phase through the
+   same loop: implement, adversarial review, orchestrator gate, commit.
 
 Artifacts remain in the central store; implementation changes land only in the worked-on repo.
+
+### Attended and unattended runs
+
+There are three commands, not five. Whether a plan runs unattended is a property of the plan, not a
+separate workflow, so `/rsx:plan` asks once and records it as `execution_mode`:
+
+- **`manual`** — you are looped in. Planning confirms the outline and staffing with you;
+  implementation pauses at each phase gate and before each commit, and `Operator:` checks may
+  appear in any phase.
+- **`auto`** — you are looped in only at the end. Planning gathers its questions up front and must
+  name a runnable E2E/smoke command; implementation runs through to a final consolidated
+  acceptance.
+
+The two modes do identical work — the only difference is when you are consulted. What keeps an auto
+plan honest is enforced by `respec lint` rather than by a separate prompt: an `Operator:` check
+anywhere but the final phase is rejected, because it would stall an unattended run.
 
 ## Commands
 
@@ -142,6 +146,8 @@ Artifacts remain in the central store; implementation changes land only in the w
 | `respec lint <change-dir> [--json]` | Validate frontmatter fields, `status` values, and required sections |
 | `respec format <path>... [--check]` | Reflow prose in files or every `*.md` under a dir; non-prose stays byte-identical |
 | `respec templates list\|eject [name]` | Inspect templates / copy embedded defaults into `templates_dir` |
+| `respec agents [--filter S] [--all] [--json]` | Probe this machine for delegation targets: installed harnesses, effort levels, reachable models |
+| `respec agent-cmd <spec> [--prompt-file F]` | Print the exact child command for `<harness>:<model>@<effort>` |
 | `respec install-hook [--force]` | Install a store pre-commit hook that checks Markdown formatting |
 | `respec render [--out <dir>]` | Build the store as a Hugo site (default `<cache>/respec/site/public`) |
 | `respec serve [--port N] [--bind ADDR]` | Serve the store with live reload |
@@ -167,6 +173,86 @@ in frontmatter, which `respec stamp` fills).
 Staleness is asymmetric by design: only spec→plan is tracked, so editing
 `plan.md` (e.g. ticking checkboxes during implementation) never marks anything
 stale.
+
+## Delegation
+
+**If you state nothing, nothing changes.** With no preferences configured,
+plans name no agents and each harness delegates exactly as it always has.
+Everything below is opt-in, and plans written before any of it existed keep
+working untouched.
+
+### Stating a preference
+
+Preferences are yours and durable, so they live in `config.yaml` rather than in
+an effort:
+
+```yaml
+agents:
+  implementer: pi:openai-codex/gpt-5.6-sol   # writes the code for a phase
+  reviewer:    claude:opus                   # independently reviews the diff
+  committer:   pi:openai-codex/gpt-5.4-mini  # commits an accepted phase
+  notes:       "cost matters more than speed; ask before anything above high"
+```
+
+```sh
+respec config set agents.implementer 'pi:openai-codex/gpt-5.6-sol'
+```
+
+A spec is `<harness>[:<model>][@<effort>]`, where harness is `pi`, `claude`, or
+`codex`. **Model and effort are both optional** — `claude:opus`, `pi@high`, or
+bare `pi` all work, and whatever you leave out stays at the harness's own
+default rather than something respec chose. Specs are validated when you set
+them, so a bad effort level fails at the keyboard instead of mid-phase.
+
+The child harness is independent of the one running the orchestrator, so a
+Claude Code session can delegate a phase to gpt-5.6-sol through pi, and a pi
+session can delegate to Opus through Claude Code. Beyond cost control that buys
+review independence: a phase implemented by one model family and reviewed by
+another is genuinely adversarial, rather than a model checking its own blind
+spots.
+
+### Preferences in, judgement out
+
+Your preferences are input. The plan records the **judgement** made in light of
+them, per phase, with the reasoning that produced it:
+
+    ## Phase 2: Parse the roster
+    **Agent:** pi:openai-codex/gpt-5.6-sol@medium — mechanical, cheap model is enough
+
+The reasoning is load-bearing. If that model is retired or unreachable when the
+plan finally runs, the implementer re-derives an equivalent from the intent
+instead of guessing.
+
+The roster itself is **discovered, never stored**. Installed harnesses and
+model catalogues drift, so a saved list would be wrong shortly after writing:
+
+```sh
+respec agents                        # what this machine can reach right now
+respec agents --filter gpt-5.6       # narrow a large catalogue
+respec agent-cmd 'claude:opus@high'  # the exact child command
+```
+
+Prompts never assemble child flags themselves. `respec agent-cmd` owns the
+per-harness details (nested-session guards, effort flag names, model syntax)
+and feeds the delegated prompt on **stdin**, so quotes and newlines in a phase
+task cannot break the command line.
+
+`respec lint` never requires an `**Agent:**` line — absence means no preference
+was stated — but always validates the ones present, since a bad spec would
+otherwise surface only once a phase was already running.
+
+### Adversarial review
+
+Each phase gets an independent read of its diff before the orchestrator judges
+it, from the `reviewer` agent where you named one and the harness's native
+subagent otherwise. The reviewer receives the phase text and spec alongside the
+diff, and answers one narrow question: what does the diff do that the phase
+does not ask for, and what does the phase ask for that it does not do?
+
+Its findings are claims, not verdicts. Prompted to find problems a model will
+find them, including invented ones, so the orchestrator adjudicates and says
+which it kept. A missing or unreachable reviewer degrades review quality but
+never produces wrong output, so it never halts a run.
 
 `respec format` reflows paragraph prose only — tables, fenced code, headings,
 inline HTML, and bare URLs are left byte-identical, and inline code / links /
@@ -206,10 +292,17 @@ rules:                  # optional per-artifact rules injected into the matching
   spec: ""
   plan: ""
   implement: ""
+agents:                 # optional delegation preferences; empty = harness defaults
+  implementer: ""       # <harness>[:<model>][@<effort>], e.g. pi:openai-codex/gpt-5.6-sol
+  reviewer: ""          # e.g. claude:opus
+  committer: ""         # e.g. pi:openai-codex/gpt-5.4-mini
+  notes: ""             # free prose: budget stance, models to avoid
 ```
 
 Keys are addressed with dots on the CLI, e.g.
-`respec config set rules.plan "..."`.
+`respec config set rules.plan "..."` or
+`respec config set agents.reviewer 'claude:opus'`. The three agent keys are
+validated on write; `notes` is free prose.
 
 ## End-to-end walkthrough
 

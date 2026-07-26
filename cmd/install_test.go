@@ -23,7 +23,7 @@ func runInstall(t *testing.T, target string) string {
 func TestInstallPiWritesUserScopeFiles(t *testing.T) {
 	home := runInstall(t, "pi")
 
-	prompts := []string{"rsx:research.md", "rsx:plan.md", "rsx:plan-auto.md", "rsx:implement.md", "rsx:implement-auto.md"}
+	prompts := []string{"rsx:research.md", "rsx:plan.md", "rsx:implement.md"}
 	for _, name := range prompts {
 		p := filepath.Join(home, ".pi", "agent", "prompts", name)
 		data, err := os.ReadFile(p)
@@ -48,7 +48,7 @@ func TestInstallPiWritesUserScopeFiles(t *testing.T) {
 func TestInstallClaudeWritesUserScopeFiles(t *testing.T) {
 	home := runInstall(t, "claude")
 
-	prompts := []string{"rsx-research.md", "rsx-plan.md", "rsx-plan-auto.md", "rsx-implement.md", "rsx-implement-auto.md"}
+	prompts := []string{"rsx-research.md", "rsx-plan.md", "rsx-implement.md"}
 	for _, name := range prompts {
 		p := filepath.Join(home, ".claude", "commands", name)
 		data, err := os.ReadFile(p)
@@ -108,5 +108,40 @@ func TestInstallIsIdempotent(t *testing.T) {
 	}
 	if string(first) != string(second) {
 		t.Error("install not idempotent: second run produced different bytes")
+	}
+}
+
+// Retiring a prompt must remove its installed file, not just stop rewriting it.
+// A leftover rsx: command keeps working and points the operator at a workflow
+// that no longer exists.
+func TestInstallPrunesRetiredPrompts(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	promptsDir := filepath.Join(home, ".pi", "agent", "prompts")
+	if err := os.MkdirAll(promptsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	retired := filepath.Join(promptsDir, "rsx:plan-auto.md")
+	mine := filepath.Join(promptsDir, "my-own.md")
+	for _, p := range []string{retired, mine} {
+		if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	rootCmd.SetArgs([]string{"install", "--target", "pi"})
+	rootCmd.SetOut(os.NewFile(0, os.DevNull))
+	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+
+	if _, err := os.Stat(retired); !os.IsNotExist(err) {
+		t.Errorf("retired prompt %s should have been removed", retired)
+	}
+	// Only the rsx namespace is respec's to prune.
+	if _, err := os.Stat(mine); err != nil {
+		t.Errorf("non-respec prompt %s must be left alone: %v", mine, err)
 	}
 }

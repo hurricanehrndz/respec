@@ -18,6 +18,43 @@ Concretely:
   prose.
 - New features should ask first: "can the CLI do this?" Only what genuinely
   requires judgment goes into the prompt templates.
+- `respec agents` probes delegation targets and `respec agent-cmd` builds the
+  child command line. Prompts must never assemble harness flags themselves —
+  nested-session guards, effort flag names, and model syntax are per-harness
+  details that belong in `internal/agents`.
+
+### Delegation: three layers, split by lifetime
+
+- **Preferences** — durable and operator-owned, so they live in `config.yaml`
+  under `agents:`. A stance like "cheap models for mechanical work" stays true
+  across efforts and model releases.
+- **Roster** — volatile, so it is never stored. `respec agents` probes at the
+  moment the operator asks; a saved list is wrong shortly after writing and
+  fails at the worst moment, mid-phase and unattended.
+- **Judgement** — per effort, recorded in `plan.md` as `**Agent:** <spec> —
+  <why>`. Preferences are the input; the plan is where the decision lands,
+  which is the same split every other respec artifact draws.
+
+Two invariants follow. Plans record a spec, never a validated catalogue entry:
+`internal/agents` checks the harness and effort level, which are stable, and
+leaves the model id opaque because a plan outlives any catalogue we could check
+it against. And **stated nothing means invent nothing** — with no preferences,
+prompts write no agent lines and the harness does what it is configured to do.
+That is what keeps plans portable between machines and keeps every plan written
+before delegation existed valid.
+
+### One prompt per phase, not one per mode
+
+There is no `plan-auto`/`implement-auto`. Whether a plan runs unattended is a
+property of the plan (`execution_mode`), so a second prompt cannot enforce it —
+only lint can, and only lint holds for a plan hand-edited afterward. The
+auto-mode rule lives in `internal/artifact`: an `Operator:` check outside the
+final phase is rejected, because it would stall an unattended run.
+
+`implement` reads `execution_mode` to decide when to stop for the operator. The
+work is identical in both modes; only the gating differs. If a change makes the
+two modes diverge structurally, that is the signal something belongs in lint
+rather than in prompt prose.
 
 ### Acknowledged compromise: repo-slug derivation
 

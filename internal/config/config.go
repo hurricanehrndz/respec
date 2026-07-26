@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hurricanehrndz/respec/internal/agents"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,6 +23,32 @@ type Rules struct {
 	Implement string `yaml:"implement"`
 }
 
+// Agents holds the operator's standing delegation preferences: which agent
+// plays each role when work is handed to a subagent.
+//
+// Every field is optional, and empty means "no preference stated" — the
+// harness then does whatever it is already configured to do. That default
+// matters: respec never picks a model on the operator's behalf, it only
+// records the one the operator asked for.
+//
+// Values are agent specs (`<harness>[:<model>][@<effort>]`), validated by
+// internal/agents. Preferences live here rather than in an effort directory
+// because a stance like "cheap models for mechanical work" stays true across
+// efforts and model releases. What changes is which models exist, and that is
+// probed with `respec agents` rather than stored.
+type Agents struct {
+	Implementer string `yaml:"implementer"` // writes the code for a phase
+	Reviewer    string `yaml:"reviewer"`    // independently reviews the phase diff
+	Committer   string `yaml:"committer"`   // commits an accepted phase
+	Notes       string `yaml:"notes"`       // free prose: budget stance, models to avoid
+}
+
+// Stated reports whether the operator expressed any delegation preference at
+// all. When false, prompts fall back to harness-native behaviour.
+func (a Agents) Stated() bool {
+	return a.Implementer != "" || a.Reviewer != "" || a.Committer != "" || a.Notes != ""
+}
+
 // Config is the on-disk respec configuration.
 type Config struct {
 	Store        string `yaml:"store"`         // central store path (R-1)
@@ -29,6 +56,7 @@ type Config struct {
 	TemplatesDir string `yaml:"templates_dir"` // optional override dir (R-12); empty = embedded
 	Context      string `yaml:"context"`       // optional shared context (R-13)
 	Rules        Rules  `yaml:"rules"`         // optional per-artifact rules (R-13)
+	Agents       Agents `yaml:"agents"`        // optional delegation preferences
 }
 
 // Defaults returns a Config populated with default values.
@@ -137,6 +165,14 @@ func (c Config) Get(key string) (string, error) {
 		return c.Rules.Plan, nil
 	case "rules.implement":
 		return c.Rules.Implement, nil
+	case "agents.implementer":
+		return c.Agents.Implementer, nil
+	case "agents.reviewer":
+		return c.Agents.Reviewer, nil
+	case "agents.committer":
+		return c.Agents.Committer, nil
+	case "agents.notes":
+		return c.Agents.Notes, nil
 	default:
 		return "", fmt.Errorf("unknown config key %q", key)
 	}
@@ -165,6 +201,24 @@ func (c *Config) Set(key, value string) error {
 		c.Rules.Plan = value
 	case "rules.implement":
 		c.Rules.Implement = value
+	case "agents.implementer", "agents.reviewer", "agents.committer":
+		// Validate on the way in: a bad spec stored here would otherwise fail
+		// at delegation time, mid-phase, when it is most expensive to discover.
+		if value != "" {
+			if _, err := agents.ParseSpec(value); err != nil {
+				return err
+			}
+		}
+		switch key {
+		case "agents.implementer":
+			c.Agents.Implementer = value
+		case "agents.reviewer":
+			c.Agents.Reviewer = value
+		case "agents.committer":
+			c.Agents.Committer = value
+		}
+	case "agents.notes":
+		c.Agents.Notes = value
 	default:
 		return fmt.Errorf("unknown config key %q", key)
 	}

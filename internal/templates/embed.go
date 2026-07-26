@@ -116,6 +116,7 @@ type RenderData struct {
 	Store    string
 	Context  string
 	Rules    config.Rules
+	Agents   config.Agents
 	HasProbe bool
 	Target
 }
@@ -228,6 +229,7 @@ func Render(cfg config.Config, target Target, feats Features) (Rendered, error) 
 		Store:    cfg.StorePath(),
 		Context:  cfg.Context,
 		Rules:    cfg.Rules,
+		Agents:   cfg.Agents,
 		HasProbe: feats.Probe,
 		Target:   target,
 	}

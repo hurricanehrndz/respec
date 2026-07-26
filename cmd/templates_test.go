@@ -15,7 +15,7 @@ func TestTemplatesListEmbedded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("templates list: %v\n%s", err, out)
 	}
-	for _, want := range []string{"prompts/research.md", "prompts/plan.md", "prompts/plan-auto.md", "prompts/implement-auto.md", "skills/respec/SKILL.md", "[embedded]"} {
+	for _, want := range []string{"prompts/research.md", "prompts/plan.md", "prompts/implement.md", "skills/respec/SKILL.md", "[embedded]"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("list output missing %q:\n%s", want, out)
 		}

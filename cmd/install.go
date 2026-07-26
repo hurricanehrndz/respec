@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/hurricanehrndz/respec/internal/config"
 	"github.com/hurricanehrndz/respec/internal/templates"
@@ -62,24 +63,25 @@ func detectFeatures(c *cobra.Command) templates.Features {
 // user-scope directories.
 func installFor(c *cobra.Command, target templates.Target, home string, rendered templates.Rendered) error {
 	var promptDst func(name string) string
-	var skillsDir string
+	var promptsDir, prefix, skillsDir string
 	switch target {
 	case templates.TargetPi:
 		// pi installs prompts under the rsx: namespace; embedded asset files
 		// cannot carry a colon (go:embed forbids it), so the prefix is
 		// applied here.
-		promptsDir := filepath.Join(home, ".pi", "agent", "prompts")
-		promptDst = func(name string) string { return filepath.Join(promptsDir, "rsx:"+name) }
+		promptsDir = filepath.Join(home, ".pi", "agent", "prompts")
+		prefix = "rsx:"
 		skillsDir = filepath.Join(home, ".pi", "agent", "skills")
 	case templates.TargetClaude:
 		// Claude Code user-scope command names cannot contain a colon, so
 		// the rsx namespace flattens to a hyphen: /rsx-research etc.
-		commandsDir := filepath.Join(home, ".claude", "commands")
-		promptDst = func(name string) string { return filepath.Join(commandsDir, "rsx-"+name) }
+		promptsDir = filepath.Join(home, ".claude", "commands")
+		prefix = "rsx-"
 		skillsDir = filepath.Join(home, ".claude", "skills")
 	default:
 		return fmt.Errorf("no install layout for target %q", target.Name)
 	}
+	promptDst = func(name string) string { return filepath.Join(promptsDir, prefix+name) }
 
 	for name, content := range rendered.Prompts {
 		dst := promptDst(name)
@@ -88,12 +90,46 @@ func installFor(c *cobra.Command, target templates.Target, home string, rendered
 		}
 		_, _ = fmt.Fprintf(c.OutOrStdout(), "installed prompt: %s\n", dst)
 	}
+	if err := pruneStalePrompts(c, promptsDir, prefix, rendered.Prompts); err != nil {
+		return err
+	}
 	for rel, content := range rendered.Skills {
 		dst := filepath.Join(skillsDir, filepath.FromSlash(rel))
 		if err := writeFile(dst, content); err != nil {
 			return err
 		}
 		_, _ = fmt.Fprintf(c.OutOrStdout(), "installed skill:  %s\n", dst)
+	}
+	return nil
+}
+
+// pruneStalePrompts removes respec-owned prompts that are no longer rendered.
+//
+// Overwriting installed files is not enough when a prompt is retired: the old
+// file keeps working as a slash command, pointing the operator at a workflow
+// that no longer exists. Only the `rsx:`/`rsx-` namespace is touched, which
+// respec owns by construction, and every removal is reported — re-running
+// install recreates anything that should still be there.
+func pruneStalePrompts(c *cobra.Command, dir, prefix string, current map[string]string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), prefix) {
+			continue
+		}
+		if _, kept := current[strings.TrimPrefix(e.Name(), prefix)]; kept {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(c.OutOrStdout(), "removed retired prompt: %s\n", path)
 	}
 	return nil
 }

@@ -91,10 +91,22 @@ func TestPlanRequiresPhaseAndVerification(t *testing.T) {
 
 func TestPlanValid(t *testing.T) {
 	doc := "---\ntitle: p\nstatus: in-progress\nexecution_mode: auto\nspec_sha256: deadbeef\n---\n" +
-		"# Plan\n\n## Overview\nx\n\n## Phase 1: Do it\nchanges\n\n" +
+		"# Plan\n\n## Overview\nx\n\n## Phase 1: Do it\n**Agent:** claude:opus@high\n\nchanges\n\n" +
 		"### Automated Verification\n- [ ] just test\n\n### Manual Verification\n- [ ] works\n"
 	if p := problemsFor(t, KindPlan, doc); len(p) != 0 {
 		t.Fatalf("valid plan reported problems: %v", p)
+	}
+}
+
+// A plan written before per-phase delegation existed has no **Agent:** lines
+// and must still lint clean: absence means no preference was stated, not an
+// error. See TestAgentLineIsNeverRequired for the per-mode assertion.
+func TestPlanWithoutAgentLinesStaysValid(t *testing.T) {
+	doc := "---\ntitle: p\nstatus: in-progress\nexecution_mode: auto\nspec_sha256: deadbeef\n---\n" +
+		"# Plan\n\n## Overview\nx\n\n## Phase 1: Do it\nchanges\n\n" +
+		"### Automated Verification\n- [ ] just test\n\n### Manual Verification\n- [ ] works\n"
+	if got := problemsFor(t, KindPlan, doc); len(got) != 0 {
+		t.Errorf("legacy plan should lint clean, got %v", got)
 	}
 }
 

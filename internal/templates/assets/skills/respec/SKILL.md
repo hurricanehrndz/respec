@@ -1,6 +1,6 @@
 ---
 name: respec
-description: The respec spec-driven workflow (research → plan → implement) over a single central store. Use when running {{.Cmd "research"}}, {{.Cmd "plan"}}, {{.Cmd "plan-auto"}}, {{.Cmd "implement"}}, or {{.Cmd "implement-auto"}}, or when creating/editing research.md, spec.md, or plan.md artifacts, or when calling the respec CLI (stamp, status, lint, format, templates, render, serve).
+description: The respec spec-driven workflow (research → plan → implement) over a single central store. Use when running {{.Cmd "research"}}, {{.Cmd "plan"}}, or {{.Cmd "implement"}}, or when creating/editing research.md, spec.md, or plan.md artifacts, or when calling the respec CLI (stamp, status, lint, format, templates, render, serve).
 ---
 {{- /* Workflow mechanics here are deliberately duplicated in the prompts/*.md templates so each
 file stands alone — edit both together. */}}
@@ -49,10 +49,37 @@ sections.
 
 Run each phase in a **fresh session**. The artifacts are the context handoff: a phase gathers and
 distills context in the open, in its own session, and the next phase reads the artifact instead of
-inheriting a context window polluted with tool output. Default to **no subagents** for context
-gathering — they cost the operator observability and steerability. Let codebase size direct you:
-delegate bulk reads only when they would drown the session. An agent without a subagent feature
-can spawn a fresh instance of itself via the shell.
+inheriting a context window polluted with tool output.
+
+## Delegation
+
+Subagents are available in **every** phase. This section is the whole policy — the phase sections
+below do not restate it, and nothing in them forbids delegating.
+
+The test is whether you need a task's *output* or only its *conclusion*. Sweeping thirty files to
+find the three that matter produces pages nobody re-reads: delegate it and keep the finding. A
+question answerable in two reads is not worth the round trip. Gauge scale before deciding.
+
+What stays in the orchestrating session is the operator dialogue and the synthesis — a child cannot
+be steered mid-flight, and the alignment is the part that must not be outsourced. Everything else
+is fair game: bulk reads, caller audits, pattern surveys, whole implementation phases.
+
+Discover what this machine can reach, then build the command:
+
+    respec agents                                   # harnesses, effort levels, models
+    respec agents --filter <substr>                 # narrow a large catalogue
+    respec agent-cmd '<spec>' --prompt-file <file>  # exact child command
+
+A spec is `<harness>[:<model>][@<effort>]` — e.g. `pi:openai-codex/gpt-5.6-sol@medium`,
+`claude:opus`, or bare `pi`. Model and effort are both optional, and omitting one means "whatever
+the harness is configured to do". Write the child's task to a temp file so the prompt is piped,
+never interpolated. Run children one at a time; they share a working tree. An agent without a
+subagent feature spawns a fresh instance of itself the same way.
+
+Two layers decide staffing, and neither is a roster. The operator's standing preferences live in
+`config.yaml` under `agents:` (implementer, reviewer, committer, notes); the plan records the
+per-phase judgement made in light of them. **Where the operator has stated nothing, invent
+nothing** — no agent line, and the harness does what it is already configured to do.
 
 ### Research (`{{.Cmd "research"}} <topic>`)
 Drives toward alignment — not neutral documentation. Establish why the change is being requested
@@ -66,60 +93,61 @@ Summary, Findings, Open Questions; add Options & Tradeoffs / Decisions as needed
 code it references without re-asking anything settled. Nothing goes to the worked-on repo.
 
 ### Plan (`{{.Cmd "plan"}} [change-dir]`)
-Read `research.md` (its Decisions are settled constraints). Confirm the phase outline with the
-operator, then co-generate `spec.md` + `plan.md` (shared deliverables). Find the highest practical
-end-to-end feedback loop and ask early for any access/setup it needs. Each phase has **Automated
-Verification** (deterministic commands) and **Manual Verification** (judgment). The orchestrator
-owns every feasible manual check; label only irreducibly external checks `Operator:`. New normal
-plans use `execution_mode: manual`.
+Read `research.md` (its Decisions are settled constraints), then co-generate `spec.md` + `plan.md`
+(shared deliverables). Find the highest practical end-to-end feedback loop and ask early for any
+access/setup it needs. Each phase has **Automated Verification** (deterministic commands) and
+**Manual Verification** (judgment). The orchestrator owns every feasible manual check; label only
+irreducibly external checks `Operator:`.
 
-### Auto Plan (`{{.Cmd "plan-auto"}} [change-dir]`)
-Perform the same planning work without outline approval or incremental confirmation. Resolve
-ordinary choices from evidence, conventions, and safe reversible defaults. Ask all material
-questions and E2E prerequisites together at the start; do not plan around a blocker. Write
-`execution_mode: auto`, include a runnable E2E/integration/smoke command, and make every phase
-independently implementable, reviewable, verifiable, and committable. Record the autonomous
-execution contract in the overview.
+Settle `execution_mode` first by asking the operator whether the plan runs unattended. `manual`
+means confirming the outline and staffing with them and allowing `Operator:` checks anywhere;
+`auto` means gathering every material question up front, naming a runnable E2E/smoke command, and
+keeping `Operator:` checks out of every phase but the last — `respec lint` enforces that, which is
+why there is no separate auto-planning command.
+
+Staff the phases in the same confirmation, guided by the operator's stated preferences. Run
+`respec agents` (add `--filter <substr>` on a large catalogue) to see which harnesses and models
+this machine can actually reach — the roster is discovered, never configured, because installed
+tooling drifts. Record `**Agent:** <spec> — <why>` per phase, keeping the reasoning so an
+unreachable model can be re-derived later. Where the operator has stated no preference, write no
+agent lines at all: the harness then does what it is configured to do, and the plan stays portable.
+Prefer a different model family for the reviewer than the implementer, so review is adversarial
+rather than self-checking.
 
 Revisiting any plan: amend surgically, never regenerate; preserve completed checkboxes unless the
-change invalidates them. Preserve `execution_mode` unless the operator explicitly switches it;
-invoking Auto Plan on a manual plan is an explicit switch to auto. Scope/behavior feedback updates
-`spec.md` first; approach-only feedback updates `plan.md`. Re-check affected gates and E2E, then:
+change invalidates them. Preserve `execution_mode` unless the operator explicitly switches it.
+Scope/behavior feedback updates `spec.md` first; approach-only feedback updates `plan.md`. Re-check
+affected gates and E2E, then:
 
     respec stamp <change-dir>
     respec lint <change-dir>
 
 ### Implement (`{{.Cmd "implement"}} <change-dir>`)
-Gate on `respec status <change-dir> --json`; stale/unstamped plans stop for the matching planner.
-A fresh manual plan runs in phase order. Tick passing Automated checks, perform and tick feasible
-Manual checks yourself, and pause only for remaining `Operator:` checks. Run the planned E2E path.
-If reality contradicts the plan, stop and report expected vs. found instead of improvising.
+Gate on `respec status <change-dir> --json`; stale or unstamped plans stop for the planner. The
+plan's `execution_mode` decides only **when you stop for the operator** — the work is identical
+either way. `manual` pauses at each phase gate and before each commit; `auto` runs through to the
+final consolidated acceptance. Either way, stop for a plan mismatch, required access, unsafe dirty
+state, scope change, or high-impact action.
 
-### Auto Implement (`{{.Cmd "implement-auto"}} <change-dir>`)
-Require a fresh plan with `execution_mode: auto`. Work sequentially by phase:
+Per phase, sequentially:
 
-1. Spawn a fresh medium-effort implementation child in the worked-on repo:
-{{if .IsClaude}}
-       env -u CLAUDECODE claude --print --no-session-persistence --effort medium "<phase task>"
-{{else}}
-       pi --print --no-session --thinking medium "<phase task>"
-{{end}}{{if .IsClaude}}
-   Claude children deliberately unset the parent's `CLAUDECODE` nesting guard.{{end}}
-2. The orchestrator reviews the complete diff, runs all automated and E2E checks, and performs all
-   feasible manual checks. Failed review goes to a fresh medium-effort correction child; the
-   orchestrator never accepts a child's self-report as proof.
-3. After acceptance, spawn a fresh low-effort child to commit exactly the phase:
-{{if .IsClaude}}
-       env -u CLAUDECODE claude --print --no-session-persistence --effort low "<commit task>"
-{{else}}
-       pi --print --no-session --thinking low "<commit task>"
-{{end}}
-4. Verify the commit, update checkboxes, and continue. Never run phase workers concurrently in one
-   working tree.
+1. **Implement.** Use the phase's `**Agent:**` spec via `respec agent-cmd '<spec>' --prompt-file
+   <file>`; with no spec, use the harness's native subagent and its defaults. The child harness
+   comes from the plan, so an orchestrator in one harness can drive children in another.
+2. **Adversarial review.** Get an independent read of the diff, giving the reviewer the phase text
+   and spec alongside it and asking one narrow question: what does the diff do that the phase does
+   not ask for, and what does the phase ask for that it does not do? Findings are claims, not
+   verdicts — the orchestrator adjudicates. A missing reviewer degrades quality but never halts
+   the run.
+3. **Gate.** The orchestrator inspects the full diff, runs Automated and E2E checks, performs and
+   ticks feasible Manual checks, and never accepts a child's self-report as proof. In manual mode
+   this is where you present evidence and wait.
+4. **Commit** the accepted phase with the cheapest capable delegate, verify the commit, update
+   checkboxes, and continue. Phase workers share one working tree, so running them concurrently
+   would have each reviewing and committing the others' half-finished edits.
 
-Do not interrupt the operator until the final consolidated acceptance unless blocked by a plan
-mismatch, required access, unsafe dirty state, scope change, or high-impact action. Set `done` only
-when all checks are complete; otherwise remain `in-progress` for final operator acceptance.
+Set `done` only when all checks are complete; otherwise remain `in-progress` for final operator
+acceptance.
 
 ## Staleness model
 
@@ -137,7 +165,9 @@ the current spec.
                                          #  stamp refuses to record the store itself as provenance)
     respec status <change-dir> [--json]  # per-artifact status + fresh | stale | unstamped
     respec list [--json]                 # every effort in the store, grouped by repo, with staleness
-    respec lint <change-dir> [--json]    # validate frontmatter, status, and required sections
+    respec lint <change-dir> [--json]    # validate frontmatter, status, required sections, agent specs
+    respec agents [--filter S] [--all]   # harnesses, effort levels, and models reachable here
+    respec agent-cmd <spec> [--prompt-file F]  # exact child command for <harness>[:<model>][@<effort>]
     respec format <path>... [--check]    # reflow prose only; non-prose left byte-identical
     respec templates list|eject          # inspect / customize the prompt + skill templates
     respec install-hook                  # store pre-commit hook that checks Markdown formatting

@@ -166,6 +166,7 @@ func (pl Plan) Validate() []string {
 	if !hasHeadingPrefix(hs, "phase") {
 		p = append(p, "missing section: at least one Phase")
 	}
+	p = appendPhaseProblems(p, pl)
 	return p
 }
 
