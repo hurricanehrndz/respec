@@ -3,23 +3,23 @@
 ## Design principle: deterministic when possible
 
 The CLI owns everything that code can answer; the agent (running the installed
-workflow prompts) is used only for judgment — research, planning,
+workflow skills) is used only for judgment — research, planning,
 implementation. If a value can be computed deterministically (dates, git metadata, hashes, YAML
-manipulation, formatting), it belongs in the CLI, not in a prompt instructing
+manipulation, formatting), it belongs in the CLI, not in a skill instructing
 the agent to shell out and hand-write it.
 
 Concretely:
 
 - `respec stamp` writes all deterministic frontmatter (provenance, spec hash)
-  and reflows the artifacts. Prompts must never instruct the agent to run
+  and reflows the artifacts. Skills must never instruct the agent to run
   `git`/`date` or hand-write those fields.
 - `respec lint` validates what the schema can enforce (fields, status enums,
-  required sections). Enforcement lives in `internal/artifact`, not in prompt
+  required sections). Enforcement lives in `internal/artifact`, not in skill
   prose.
 - New features should ask first: "can the CLI do this?" Only what genuinely
-  requires judgment goes into the prompt templates.
+  requires judgment goes into the skill templates.
 - `respec agents` probes delegation targets and `respec agent-cmd` builds the
-  child command line. Prompts must never assemble harness flags themselves —
+  child command line. Skills must never assemble harness flags themselves —
   nested-session guards, effort flag names, and model syntax are per-harness
   details that belong in `internal/agents`.
 
@@ -39,14 +39,14 @@ Two invariants follow. Plans record a spec, never a validated catalogue entry:
 `internal/agents` checks the harness and effort level, which are stable, and
 leaves the model id opaque because a plan outlives any catalogue we could check
 it against. And **stated nothing means invent nothing** — with no preferences,
-prompts write no agent lines and the harness does what it is configured to do.
+skills write no agent lines and the harness does what it is configured to do.
 That is what keeps plans portable between machines and keeps every plan written
 before delegation existed valid.
 
-### One prompt per phase, not one per mode
+### One skill per phase, not one per mode
 
 There is no `plan-auto`/`implement-auto`. Whether a plan runs unattended is a
-property of the plan (`execution_mode`), so a second prompt cannot enforce it —
+property of the plan (`execution_mode`), so a second skill cannot enforce it —
 only lint can, and only lint holds for a plan hand-edited afterward. The
 auto-mode rule lives in `internal/artifact`: an `Operator:` check outside the
 final phase is rejected, because it would stall an unattended run.
@@ -54,34 +54,34 @@ final phase is rejected, because it would stall an unattended run.
 `implement` reads `execution_mode` to decide when to stop for the operator. The
 work is identical in both modes; only the gating differs. If a change makes the
 two modes diverge structurally, that is the signal something belongs in lint
-rather than in prompt prose.
+rather than in skill prose.
 
-### Branch per effort: prompt guidance, not enforcement
+### Branch per effort: skill guidance, not enforcement
 
-The implement prompt puts an effort's commits on their own branch, defaulting
+The implement skill puts an effort's commits on their own branch, defaulting
 to `respec/<slug>`, and leaves an already-checked-out non-default branch alone.
 That stays prose rather than a `respec branch` command or a lint rule for two
 reasons: the default name is the change-dir basename, so there is nothing to
 compute; and an operator or repository with its own naming convention has to
 win over respec's default, which a lint rule cannot express. Pushing and PR
-creation remain the operator's call — the prompt creates and switches, never
+creation remain the operator's call — the skill creates and switches, never
 publishes.
 
 ### Acknowledged compromise: repo-slug derivation
 
 We aim for determinism but it isn't always practical. The `<owner-repo>`
 directory name under the store is derived **by the agent** from the origin
-remote, following the recipe in `internal/templates/assets/prompts/research.md`
+remote, following the recipe in `internal/templates/assets/skills/rsx-research/SKILL.md`
 — a deliberate trade (operator's call) to avoid growing the CLI surface with a
 `respec new`-style command. Known cost: the hand-derivation can drift on
 unusual remotes (e.g. GitLab subgroups), scattering one repo's efforts across
 directories and weakening bare-slug `depends_on` resolution. If that drift
 becomes a real problem, the fix is a canonical `RepoSlug()` in
-`internal/gitmeta` surfaced to the agent — not more prompt prose.
+`internal/gitmeta` surfaced to the agent — not more skill prose.
 
 ## Design provenance
 
-The prompt-template structure derives from the RPI (Research → Plan →
+The skill structure derives from the RPI (Research → Plan →
 Implement) Goose recipes kept as unmodified reference in
 `docs/external/rpi-recipes/` (see its README for origin and where respec
 deliberately deviates). Consult them when iterating on
@@ -93,9 +93,9 @@ deliberately deviates). Consult them when iterating on
   `plan.md` siblings. The effort date lives in frontmatter, not the path.
 - Artifacts never land in the worked-on repo — only in the central store.
 - Staleness is one-directional (spec→plan) by design.
-- Section names validated by `respec lint` are load-bearing: the prompt
+- Section names validated by `respec lint` are load-bearing: the skill
   skeletons in `internal/templates/assets/` must keep them verbatim, and
-  changes to `internal/artifact` validators must update the prompts in the
+  changes to `internal/artifact` validators must update the skills in the
   same commit.
 
 ## Development

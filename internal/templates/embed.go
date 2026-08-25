@@ -1,6 +1,6 @@
-// Package templates embeds the default /rsx:* prompt-templates and the backing
-// respec skill, and renders them with the configured store path and injected
-// context/rules (R-3, R-12, R-13).
+// Package templates embeds the respec skills — the shared workflow plus three
+// phase entry points — and renders them with the configured store path and
+// injected context/rules (R-3, R-12, R-13).
 //
 // Resolution is layered: when templates_dir is set, each template file is taken
 // from the override dir if present there, otherwise from the embedded defaults.
@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path"
 	"strings"
 	"text/template"
 
@@ -26,20 +25,21 @@ var embedded embed.FS
 // EmbeddedSource is the reported source label for built-in templates.
 const EmbeddedSource = "embedded"
 
-// Target is an agent flavor the templates render for. The prompt bodies are
-// agent-agnostic; everything agent-specific — argument placeholders, installed
-// command names, where the skill lives — resolves through Target's methods.
+// Target is an agent flavor the templates render for. The skill bodies are
+// agent-agnostic; everything agent-specific — installed command names, where
+// the skill lives — resolves through Target's methods.
 type Target struct {
-	Name string // "pi" | "claude" | "codex"
+	Name string // "pi" | "prime-agent" | "claude" | "codex"
 }
 
 var (
-	TargetPi     = Target{Name: "pi"}
-	TargetClaude = Target{Name: "claude"}
-	TargetCodex  = Target{Name: "codex"}
+	TargetPi         = Target{Name: "pi"}
+	TargetPrimeAgent = Target{Name: "prime-agent"}
+	TargetClaude     = Target{Name: "claude"}
+	TargetCodex      = Target{Name: "codex"}
 
 	// Targets maps a --target flag value to its Target.
-	Targets = map[string]Target{"pi": TargetPi, "claude": TargetClaude, "codex": TargetCodex}
+	Targets = map[string]Target{"pi": TargetPi, "prime-agent": TargetPrimeAgent, "claude": TargetClaude, "codex": TargetCodex}
 )
 
 // IsClaude reports whether templates are being rendered for Claude Code.
@@ -48,52 +48,20 @@ func (t Target) IsClaude() bool { return t.Name == TargetClaude.Name }
 // IsCodex reports whether templates are being rendered for OpenAI Codex.
 func (t Target) IsCodex() bool { return t.Name == TargetCodex.Name }
 
-// AllArgs is the placeholder expanding to the invocation's whole argument string.
-func (t Target) AllArgs() string {
-	if t.IsClaude() || t.IsCodex() {
-		return "$ARGUMENTS"
-	}
-	return "$@"
-}
+// IsPrimeAgent reports whether templates are being rendered for Prime Agent.
+func (t Target) IsPrimeAgent() bool { return t.Name == TargetPrimeAgent.Name }
 
-// Arg1Or is the first-argument placeholder with a fallback when absent. Claude
-// Code and Codex have no default syntax (bash-style ${1:-...} is unsupported),
-// so there the surrounding prose must carry the fallback and the raw
-// placeholder is emitted; pi embeds the default.
-func (t Target) Arg1Or(def string) string {
-	if t.IsClaude() || t.IsCodex() {
-		return "$ARGUMENTS"
-	}
-	return "${1:-" + def + "}"
-}
-
-// Arg1Req is the first-argument placeholder for a required argument. No target
-// can enforce required-ness in the placeholder itself: pi's template engine
-// substitutes $@, $1, ${1:-default}, and ${@:N} but NOT bash's ${1:?msg} error
-// form — that pattern is left literal, so the agent sees the raw placeholder
-// and treats the arg as missing. Claude Code and Codex have no such syntax at
-// all. All therefore emit a plain all-args placeholder and rely on the
-// surrounding prose ("required — stop and ask if missing") to enforce it. msg
-// is retained to document the argument at the call site.
-func (t Target) Arg1Req(msg string) string {
-	if t.IsClaude() || t.IsCodex() {
-		return "$ARGUMENTS"
-	}
-	return "$@"
-}
-
-// Cmd returns the installed command name for a prompt. pi namespaces with a
-// colon (/rsx:plan); Claude Code user-scope command names cannot contain one,
-// so the namespace flattens to a hyphen (/rsx-plan); Codex exposes files in its
-// prompts dir under a prompts: namespace (/prompts:rsx-plan).
+// Cmd returns how to invoke a phase skill. pi and Prime Agent register skills
+// as /skill:name; Claude Code resolves them as /name; Codex mentions them as
+// $name.
 func (t Target) Cmd(name string) string {
 	if t.IsCodex() {
-		return "/prompts:rsx-" + name
+		return "$rsx-" + name
 	}
 	if t.IsClaude() {
 		return "/rsx-" + name
 	}
-	return "/rsx:" + name
+	return "/skill:rsx-" + name
 }
 
 // SkillPath is where the installed respec skill lives at user scope.
@@ -104,18 +72,10 @@ func (t Target) SkillPath() string {
 	if t.IsClaude() {
 		return "~/.claude/skills/respec/SKILL.md"
 	}
+	if t.IsPrimeAgent() {
+		return "~/.prime/agent/skills/respec/SKILL.md"
+	}
 	return "~/.pi/agent/skills/respec/SKILL.md"
-}
-
-// SkillCmd is how the operator invokes the respec skill interactively.
-func (t Target) SkillCmd() string {
-	if t.IsCodex() {
-		return "$respec"
-	}
-	if t.IsClaude() {
-		return "/respec"
-	}
-	return "/skill:respec"
 }
 
 // Features records optional operator tooling detected at install time; the
@@ -135,16 +95,15 @@ type RenderData struct {
 	Target
 }
 
-// Rendered holds the rendered assets keyed by their install-relative path.
+// Rendered holds the rendered skills keyed by their install-relative path.
 type Rendered struct {
-	Prompts map[string]string // base filename -> content (e.g. "research.md")
-	Skills  map[string]string // path under skills/ -> content (e.g. "respec/SKILL.md")
+	Skills map[string]string // path under skills/ -> content (e.g. "respec/SKILL.md")
 }
 
 // TemplateFile describes one resolved template and where it comes from.
 type TemplateFile struct {
-	Name    string // logical path, e.g. "prompts/research.md" or "skills/respec/SKILL.md"
-	Key     string // install key: base filename (prompts) or path under skills/ (skills)
+	Name    string // logical path, e.g. "skills/respec/SKILL.md"
+	Key     string // install key: path under skills/ (e.g. "respec/SKILL.md")
 	IsSkill bool
 	Source  string // EmbeddedSource, or the override dir when overridden
 	fsys    fs.FS
@@ -177,13 +136,6 @@ func Resolve(cfg config.Config) ([]TemplateFile, error) {
 	}
 
 	collect := func(fsys fs.FS, source string) error {
-		prompts, err := fs.Glob(fsys, "prompts/*.md")
-		if err != nil {
-			return err
-		}
-		for _, p := range prompts {
-			add(TemplateFile{Name: p, Key: path.Base(p), Source: source, fsys: fsys, path: p})
-		}
 		if _, err := fs.Stat(fsys, "skills"); err != nil {
 			return nil // no skills tree in this layer
 		}
@@ -250,10 +202,7 @@ func Render(cfg config.Config, target Target, feats Features) (Rendered, error) 
 		HasProbe: feats.Probe,
 		Target:   target,
 	}
-	out := Rendered{
-		Prompts: map[string]string{},
-		Skills:  map[string]string{},
-	}
+	out := Rendered{Skills: map[string]string{}}
 	for _, f := range files {
 		raw, err := f.ReadRaw()
 		if err != nil {
@@ -263,14 +212,10 @@ func Render(cfg config.Config, target Target, feats Features) (Rendered, error) 
 		if err != nil {
 			return Rendered{}, err
 		}
-		if f.IsSkill {
-			out.Skills[f.Key] = rendered
-		} else {
-			out.Prompts[f.Key] = rendered
-		}
+		out.Skills[f.Key] = rendered
 	}
-	if len(out.Prompts) == 0 {
-		return Rendered{}, fmt.Errorf("no prompt templates found in source")
+	if len(out.Skills) == 0 {
+		return Rendered{}, fmt.Errorf("no skills found in source")
 	}
 	return out, nil
 }

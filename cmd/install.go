@@ -16,14 +16,14 @@ import (
 func init() {
 	var targetName string
 	cmd := &cobra.Command{
-		Use:   "install --target <pi|claude|codex>",
-		Short: "Render and install the prompt-templates and skill at user scope for an agent",
+		Use:   "install --target <pi|prime-agent|claude|codex>",
+		Short: "Render and install the respec skills at user scope for an agent",
 		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			target, ok := templates.Targets[targetName]
 			if !ok {
 				c.SilenceUsage = true
-				return fmt.Errorf("unknown --target %q (valid: pi, claude, codex)", targetName)
+				return fmt.Errorf("unknown --target %q (valid: pi, prime-agent, claude, codex)", targetName)
 			}
 			cfg, err := config.Load()
 			if err != nil {
@@ -41,7 +41,7 @@ func init() {
 			return installFor(c, target, home, rendered)
 		},
 	}
-	cmd.Flags().StringVar(&targetName, "target", "", "agent to install for: pi, claude, or codex (required)")
+	cmd.Flags().StringVar(&targetName, "target", "", "agent to install for: pi, prime-agent, claude, or codex (required)")
 	_ = cmd.MarkFlagRequired("target")
 	rootCmd.AddCommand(cmd)
 }
@@ -53,56 +53,32 @@ func detectFeatures(c *cobra.Command) templates.Features {
 	feats := templates.Features{}
 	if _, err := exec.LookPath("probe"); err == nil {
 		feats.Probe = true
-		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe found on PATH: prompts include probe extract guidance")
+		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe found on PATH: skills include probe extract guidance")
 	} else {
-		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe not found on PATH: prompts omit probe guidance (re-run install after installing it)")
+		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe not found on PATH: skills omit probe guidance (re-run install after installing it)")
 	}
 	return feats
 }
 
-// installFor writes the rendered prompts and skill into the target agent's
-// user-scope directories.
+// installFor writes the rendered skills into the target agent's user-scope
+// skills directory.
 func installFor(c *cobra.Command, target templates.Target, home string, rendered templates.Rendered) error {
-	var promptDst func(name string) string
-	var promptsDir, prefix, skillsDir string
+	var skillsDir string
 	switch target {
 	case templates.TargetPi:
-		// pi installs prompts under the rsx: namespace; embedded asset files
-		// cannot carry a colon (go:embed forbids it), so the prefix is
-		// applied here.
-		promptsDir = filepath.Join(home, ".pi", "agent", "prompts")
-		prefix = "rsx:"
 		skillsDir = filepath.Join(home, ".pi", "agent", "skills")
+	case templates.TargetPrimeAgent:
+		skillsDir = filepath.Join(home, ".prime", "agent", "skills")
 	case templates.TargetClaude:
-		// Claude Code user-scope command names cannot contain a colon, so
-		// the rsx namespace flattens to a hyphen: /rsx-research etc.
-		promptsDir = filepath.Join(home, ".claude", "commands")
-		prefix = "rsx-"
 		skillsDir = filepath.Join(home, ".claude", "skills")
 	case templates.TargetCodex:
-		// Codex keeps custom prompts and skills under CODEX_HOME (~/.codex by
-		// default) and invokes the prompts as /prompts:rsx-*.
 		codexHome := os.Getenv("CODEX_HOME")
 		if codexHome == "" {
 			codexHome = filepath.Join(home, ".codex")
 		}
-		promptsDir = filepath.Join(codexHome, "prompts")
-		prefix = "rsx-"
 		skillsDir = filepath.Join(codexHome, "skills")
 	default:
 		return fmt.Errorf("no install layout for target %q", target.Name)
-	}
-	promptDst = func(name string) string { return filepath.Join(promptsDir, prefix+name) }
-
-	for name, content := range rendered.Prompts {
-		dst := promptDst(name)
-		if err := writeFile(dst, content); err != nil {
-			return err
-		}
-		_, _ = fmt.Fprintf(c.OutOrStdout(), "installed prompt: %s\n", dst)
-	}
-	if err := pruneStalePrompts(c, promptsDir, prefix, rendered.Prompts); err != nil {
-		return err
 	}
 	for rel, content := range rendered.Skills {
 		dst := filepath.Join(skillsDir, filepath.FromSlash(rel))
@@ -112,37 +88,6 @@ func installFor(c *cobra.Command, target templates.Target, home string, rendered
 		_, _ = fmt.Fprintf(c.OutOrStdout(), "installed skill:  %s\n", dst)
 	}
 	return pruneStaleSkills(c, skillsDir, rendered.Skills)
-}
-
-// pruneStalePrompts removes respec-owned prompts that are no longer rendered.
-//
-// Overwriting installed files is not enough when a prompt is retired: the old
-// file keeps working as a slash command, pointing the operator at a workflow
-// that no longer exists. Only the `rsx:`/`rsx-` namespace is touched, which
-// respec owns by construction, and every removal is reported — re-running
-// install recreates anything that should still be there.
-func pruneStalePrompts(c *cobra.Command, dir, prefix string, current map[string]string) error {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasPrefix(e.Name(), prefix) {
-			continue
-		}
-		if _, kept := current[strings.TrimPrefix(e.Name(), prefix)]; kept {
-			continue
-		}
-		path := filepath.Join(dir, e.Name())
-		if err := os.Remove(path); err != nil {
-			return err
-		}
-		_, _ = fmt.Fprintf(c.OutOrStdout(), "removed retired prompt: %s\n", path)
-	}
-	return nil
 }
 
 // pruneStaleSkills removes files respec no longer renders from the skill

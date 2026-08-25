@@ -4,13 +4,14 @@
 All artifacts live in **one central store** (a git repo you own), never in the
 repo you are working on. The actual reasoning is done by the agent — running in
 [pi](https://github.com/earendil-works/pi),
+[Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent),
 [Claude Code](https://code.claude.com), or
 [OpenAI Codex](https://developers.openai.com/codex/) — executing installed
-prompt-templates (`/rsx:*` in pi, `/rsx-*` in Claude Code, `/prompts:rsx-*` in
-Codex); the `respec` CLI does deterministic plumbing only:
+skills (`/skill:rsx-*` in pi and Prime Agent, `/rsx-*` in Claude Code,
+`$rsx-*` in Codex); the `respec` CLI does deterministic plumbing only:
 
 - hold config (store path, optional injected context/rules),
-- render and install the research, plan, and implement prompts + backing skill at user scope,
+- render and install the respec skills (a shared workflow plus three phase entry points) at user scope,
 - stamp deterministic frontmatter — provenance (date, repo, git commit) and the
   spec→plan staleness hash — and auto-reflow the artifacts,
 - validate artifacts (`lint`) and reflow prose without touching structure,
@@ -27,15 +28,16 @@ Required:
   (repo, commit) from the worked-on repo, and the central store is a git repo
   you own.
 - **An agent** — [pi](https://github.com/earendil-works/pi),
+  [Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent),
   [Claude Code](https://code.claude.com), and/or
-  [OpenAI Codex](https://developers.openai.com/codex/); the prompts run there.
+  [OpenAI Codex](https://developers.openai.com/codex/); the skills run there.
 
 Optional, for the best experience:
 
 - **[Hugo](https://gohugo.io)** — required only by `respec render` / `respec
   serve`, which build the store into a browsable site (with Mermaid diagrams).
 - **[probe](https://github.com/probelabs/probe)** — tree-sitter symbol
-  extraction; when on PATH at install time, the research and plan prompts
+  extraction; when on PATH at install time, the research and plan skills
   steer the agent to pull single definitions with it (see below).
 - **[pre-commit](https://pre-commit.com)** — if your store repo uses the
   framework, this repo ships `respec-format` hooks to guard Markdown
@@ -78,48 +80,46 @@ hooks block additionally needs
 go install github.com/hurricanehrndz/respec@latest
 
 respec config set store ~/respec-store   # central store (default: ~/respec-store)
-respec install --target pi               # render + install prompts and the respec skill
+respec install --target pi               # render + install the respec skills
+respec install --target prime-agent      # same, for Prime Agent
 respec install --target claude           # same, for Claude Code
 respec install --target codex            # same, for OpenAI Codex (run each agent you use)
 ```
 
-`--target pi` writes the prompts to
-`~/.pi/agent/prompts/rsx:{research,plan,implement}.md` and the skill to
-`~/.pi/agent/skills/respec/`. `--target claude` writes the commands to
-`~/.claude/commands/rsx-{research,plan,implement}.md` (Claude Code command
-names cannot contain a colon, so there the workflow uses `/rsx-*`) and the skill to
-`~/.claude/skills/respec/`. `--target codex` writes
-`$CODEX_HOME/prompts/rsx-{research,plan,implement}.md` and the skill bundle
-(including the `agents/openai.yaml` display metadata Codex reads) to
-`$CODEX_HOME/skills/respec/`, defaulting `CODEX_HOME` to `~/.codex`; Codex
-invokes those prompts as `/prompts:rsx-*`.
-The store path is baked in for every target. Re-running is idempotent; it overwrites
-the respec-owned files with a fresh render, so run it again after changing
-config. It also removes any retired `rsx:`/`rsx-` prompt it no longer renders,
-so a command that no longer exists cannot linger and be invoked.
+Every target installs the same four skills under its own skills directory:
+`respec` (the shared workflow) plus `rsx-research`, `rsx-plan`, and
+`rsx-implement` (the phase entry points). `--target pi` writes them to
+`~/.pi/agent/skills/`, `--target prime-agent` to `~/.prime/agent/skills/`,
+`--target claude` to `~/.claude/skills/`, and `--target codex` to
+`$CODEX_HOME/skills/` (defaulting `CODEX_HOME` to `~/.codex`). All four skills
+carry `disable-model-invocation: true`, so they load only when invoked
+explicitly (the phase skills read `respec` by path). The store path is baked in
+for every target. Re-running is idempotent; it overwrites the respec-owned
+files with a fresh render, so run it again after changing config, and it
+removes any retired respec skill file it no longer renders.
 
 If [probe](https://github.com/probelabs/probe) is on PATH at install time, the
-research and plan prompts additionally steer the agent to pull single
-definitions with `probe extract <file>#<symbol>`; without it the prompts never
+research and plan skills additionally steer the agent to pull single
+definitions with `probe extract <file>#<symbol>`; without it the skills never
 mention probe. Install probe, then re-run `respec install`, to enable it.
 
 Only `probe extract` is used. `probe search` ranks whole files by BM25 and, on
 a repo this size, returns most of the tree for an ordinary query — grep locates
-faster and cheaper, so the prompts pair grep-to-locate with extract-to-read.
+faster and cheaper, so the skills pair grep-to-locate with extract-to-read.
 
 ## Workflow
 
 From any repo, in an agent session (the pi names are used below; Claude Code spells them
-`/rsx-research` etc., Codex `/prompts:rsx-research` etc.):
+`/rsx-research` etc., Codex `$rsx-research` etc.):
 
-1. `/rsx:research <topic>` — an interview-driven exploration that writes `research.md` into
+1. `/skill:rsx-research <topic>` — an interview-driven exploration that writes `research.md` into
    `<store>/<owner-repo>/<slug>/` (efforts are grouped by the primary repo they affect), then runs
    `respec stamp` to fill provenance (date, repo, git commit).
-2. `/rsx:plan` — reads the research, co-generates `spec.md` + `plan.md` in the same change dir
+2. `/skill:rsx-plan` — reads the research, co-generates `spec.md` + `plan.md` in the same change dir
    (phased plan with per-phase Automated/Manual verification and an end-to-end feedback loop), then
    runs `respec stamp` to record the spec's hash. If a plan already exists, it amends it surgically
    and preserves its `execution_mode`.
-3. `/rsx:implement` — first runs `respec status --json`; if the spec changed since the plan was
+3. `/skill:rsx-implement` — first runs `respec status --json`; if the spec changed since the plan was
    stamped (`stale`), it stops and tells you to re-plan. Otherwise it puts the work on a branch for
    the effort (`respec/<slug>` unless the repo or you say otherwise) and runs each phase through the
    same loop: implement, adversarial review, orchestrator gate, commit. Pushing stays yours.
@@ -129,7 +129,7 @@ Artifacts remain in the central store; implementation changes land only in the w
 ### Attended and unattended runs
 
 There are three commands, not five. Whether a plan runs unattended is a property of the plan, not a
-separate workflow, so `/rsx:plan` asks once and records it as `execution_mode`:
+separate workflow, so `/skill:rsx-plan` asks once and records it as `execution_mode`:
 
 - **`manual`** — you are looped in. Planning confirms the outline and staffing with you;
   implementation pauses at each phase gate and before each commit, and `Operator:` checks may
@@ -139,7 +139,7 @@ separate workflow, so `/rsx:plan` asks once and records it as `execution_mode`:
   acceptance.
 
 The two modes do identical work — the only difference is when you are consulted. What keeps an auto
-plan honest is enforced by `respec lint` rather than by a separate prompt: an `Operator:` check
+plan honest is enforced by `respec lint` rather than by a separate skill: an `Operator:` check
 anywhere but the final phase is rejected, because it would stall an unattended run.
 
 ## Commands
@@ -148,7 +148,7 @@ anywhere but the final phase is rejected, because it would stall an unattended r
 | --- | --- |
 | `respec config get\|set <key> [value]` | Read/write `~/.config/respec/config.yaml` |
 | `respec config path` | Print the config file path |
-| `respec install --target <pi\|claude\|codex>` | Render + install the prompts and skill at user scope for that agent |
+| `respec install --target <pi\|prime-agent\|claude\|codex>` | Render + install the respec skills at user scope for that agent |
 | `respec stamp <change-dir> [--repo <path>]` | Write provenance + `spec_sha256` into the artifacts, then reflow them |
 | `respec status <change-dir> [--json]` | Report `fresh` / `stale` / `unstamped` plus per-artifact status |
 | `respec list [--json]` | List every effort in the store, grouped by repo, with status/staleness |
@@ -207,9 +207,10 @@ agents:
 respec config set agents.implementer 'pi:openai-codex/gpt-5.6-sol'
 ```
 
-A spec is `<harness>[:<model>][@<effort>]`, where harness is `pi`, `claude`, or
-`codex`. **Model and effort are both optional** — `claude:opus`, `pi@high`, or
-bare `pi` all work, and whatever you leave out stays at the harness's own
+A spec is `<harness>[:<model>][@<effort>]`, where harness is `pi`,
+`prime-agent`, `claude`, or `codex`. **Model and effort are both optional** —
+`claude:opus`, `pi@high`, or bare `pi` all work, and whatever you leave out
+stays at the harness's own
 default rather than something respec chose. Specs are validated when you set
 them, so a bad effort level fails at the keyboard instead of mid-phase.
 
@@ -294,9 +295,9 @@ to display).
 store: ~/respec-store   # central store path
 reflow_width: 80        # prose reflow width for `respec format`
 templates_dir: ""       # optional override dir, layered per-file over the embedded defaults
-                        # (override one prompt without re-supplying the rest); empty = embedded
-context: ""             # optional shared context injected into every prompt
-rules:                  # optional per-artifact rules injected into the matching prompt
+                        # (override one skill without re-supplying the rest); empty = embedded
+context: ""             # optional shared context injected into the shared respec skill
+rules:                  # optional per-artifact rules injected into the matching skill
   research: ""
   spec: ""
   plan: ""
@@ -325,7 +326,7 @@ respec install --target pi
 
 # 2. from the unrelated repo, run the workflow in a pi session
 cd /tmp/scratch-repo && git init -q .
-pi   # then: /rsx:research <topic> → /rsx:plan → /rsx:implement
+pi   # then: /skill:rsx-research <topic> → /skill:rsx-plan → /skill:rsx-implement
 
 # 3. artifacts landed only in the store; the scratch repo is untouched
 find /tmp/respec-store -name '*.md'
@@ -335,7 +336,7 @@ git -C /tmp/scratch-repo status --short   # expect: empty
 CHANGE=$(dirname "$(find /tmp/respec-store -name plan.md | head -1)")
 respec status "$CHANGE"                   # fresh
 echo change >> "$CHANGE/spec.md"
-respec status "$CHANGE"                   # stale → /rsx:implement refuses to proceed
+respec status "$CHANGE"                   # stale → /skill:rsx-implement refuses to proceed
 
 # 5. validate, format + browse
 respec lint "$CHANGE"                      # frontmatter/status/sections OK

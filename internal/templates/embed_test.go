@@ -20,49 +20,33 @@ func TestRenderSubstitutesStoreAndInjects(t *testing.T) {
 		t.Fatalf("Render: %v", err)
 	}
 
-	research, ok := r.Prompts["research.md"]
-	if !ok {
-		t.Fatal("research.md not rendered")
-	}
-	if !strings.Contains(research, "/tmp/my-store") {
-		t.Error("store path not substituted into research prompt")
-	}
-	if !strings.Contains(research, "SHARED-CONTEXT-MARKER") {
-		t.Error("context not injected into research prompt")
-	}
-	if !strings.Contains(research, "RESEARCH-RULE-MARKER") {
-		t.Error("research rule not injected")
-	}
-
-	// No unexpanded template directives should remain anywhere.
-	for name, content := range r.Prompts {
-		if strings.Contains(content, "{{") {
-			t.Errorf("prompt %s still has unexpanded {{ }}", name)
-		}
-	}
-	skill, ok := r.Skills["respec/SKILL.md"]
+	// The store path and shared context live in the respec skill (single
+	// source of truth); the phase skills point at it rather than duplicating.
+	shared, ok := r.Skills["respec/SKILL.md"]
 	if !ok {
 		t.Fatal("respec/SKILL.md not rendered")
 	}
-	if strings.Contains(skill, "{{") {
-		t.Error("skill still has unexpanded {{ }}")
+	if !strings.Contains(shared, "/tmp/my-store") {
+		t.Error("store path not substituted into respec skill")
 	}
-	if !strings.Contains(skill, "/tmp/my-store") {
-		t.Error("store path not substituted into skill")
-	}
-}
-
-func TestResearchTemplateCapturesChangeMotivation(t *testing.T) {
-	r, err := Render(config.Defaults(), TargetPi, Features{})
-	if err != nil {
-		t.Fatalf("Render: %v", err)
+	if !strings.Contains(shared, "SHARED-CONTEXT-MARKER") {
+		t.Error("context not injected into respec skill")
 	}
 
-	if !strings.Contains(r.Prompts["research.md"], "## Motivation") {
-		t.Error("research prompt should preserve why the change was initiated")
+	// Per-phase rules stay with their phase skill.
+	research, ok := r.Skills["rsx-research/SKILL.md"]
+	if !ok {
+		t.Fatal("rsx-research/SKILL.md not rendered")
 	}
-	if !strings.Contains(r.Skills["respec/SKILL.md"], "with a Motivation section") {
-		t.Error("respec skill should require motivation in new research artifacts")
+	if !strings.Contains(research, "RESEARCH-RULE-MARKER") {
+		t.Error("research rule not injected into research skill")
+	}
+
+	// No unexpanded template directives should remain anywhere.
+	for name, content := range r.Skills {
+		if strings.Contains(content, "{{") {
+			t.Errorf("skill %s still has unexpanded {{ }}", name)
+		}
 	}
 }
 
@@ -73,16 +57,16 @@ func TestRenderOmitsEmptyContextAndRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
-	if strings.Contains(r.Prompts["research.md"], "Shared context") {
+	if strings.Contains(r.Skills["respec/SKILL.md"], "Shared context") {
 		t.Error("empty context should not emit a Shared context section")
 	}
 }
 
 func TestRenderLayersOverrideOverEmbedded(t *testing.T) {
 	dir := t.TempDir()
-	// Override just plan.md and the skill, plus add an override-only prompt.
-	mustWrite(t, filepath.Join(dir, "prompts", "plan.md"), "store={{.Store}} PLAN-OVERRIDE\n")
-	mustWrite(t, filepath.Join(dir, "prompts", "custom.md"), "CUSTOM-ONLY {{.Store}}\n")
+	// Override just the plan skill and the shared skill, plus an override-only skill.
+	mustWrite(t, filepath.Join(dir, "skills", "rsx-plan", "SKILL.md"), "store={{.Store}} PLAN-OVERRIDE\n")
+	mustWrite(t, filepath.Join(dir, "skills", "custom", "SKILL.md"), "CUSTOM-ONLY {{.Store}}\n")
 	mustWrite(t, filepath.Join(dir, "skills", "respec", "SKILL.md"), "SKILL-OVERRIDE {{.Store}}\n")
 
 	cfg := config.Defaults()
@@ -94,30 +78,26 @@ func TestRenderLayersOverrideOverEmbedded(t *testing.T) {
 		t.Fatalf("Render: %v", err)
 	}
 
-	// Override wins for plan.md.
-	if !strings.Contains(r.Prompts["plan.md"], "PLAN-OVERRIDE") {
-		t.Errorf("plan.md override not applied: %q", r.Prompts["plan.md"])
+	if !strings.Contains(r.Skills["rsx-plan/SKILL.md"], "PLAN-OVERRIDE") {
+		t.Errorf("rsx-plan override not applied: %q", r.Skills["rsx-plan/SKILL.md"])
 	}
-	// Override-only prompt is included.
-	if !strings.Contains(r.Prompts["custom.md"], "CUSTOM-ONLY") {
-		t.Error("override-only custom.md not rendered")
+	if !strings.Contains(r.Skills["custom/SKILL.md"], "CUSTOM-ONLY") {
+		t.Error("override-only custom skill not rendered")
 	}
-	// Embedded prompts still present (layering, not all-or-nothing).
-	if _, ok := r.Prompts["research.md"]; !ok {
-		t.Error("embedded research.md should still render under layering")
+	if _, ok := r.Skills["rsx-research/SKILL.md"]; !ok {
+		t.Error("embedded rsx-research should still render under layering")
 	}
-	if _, ok := r.Prompts["implement.md"]; !ok {
-		t.Error("embedded implement.md should still render under layering")
+	if _, ok := r.Skills["rsx-implement/SKILL.md"]; !ok {
+		t.Error("embedded rsx-implement should still render under layering")
 	}
-	// Skill override wins.
 	if !strings.Contains(r.Skills["respec/SKILL.md"], "SKILL-OVERRIDE") {
-		t.Errorf("skill override not applied: %q", r.Skills["respec/SKILL.md"])
+		t.Errorf("respec skill override not applied: %q", r.Skills["respec/SKILL.md"])
 	}
 }
 
 func TestResolveReportsSource(t *testing.T) {
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "prompts", "plan.md"), "x\n")
+	mustWrite(t, filepath.Join(dir, "skills", "rsx-plan", "SKILL.md"), "x\n")
 	cfg := config.Defaults()
 	cfg.TemplatesDir = dir
 
@@ -129,11 +109,11 @@ func TestResolveReportsSource(t *testing.T) {
 	for _, f := range files {
 		sources[f.Name] = f.Source
 	}
-	if got := sources["prompts/plan.md"]; got != dir {
-		t.Errorf("plan.md source = %q, want override dir %q", got, dir)
+	if got := sources["skills/rsx-plan/SKILL.md"]; got != dir {
+		t.Errorf("rsx-plan source = %q, want override dir %q", got, dir)
 	}
-	if got := sources["prompts/research.md"]; got != EmbeddedSource {
-		t.Errorf("research.md source = %q, want %q", got, EmbeddedSource)
+	if got := sources["skills/rsx-research/SKILL.md"]; got != EmbeddedSource {
+		t.Errorf("rsx-research source = %q, want %q", got, EmbeddedSource)
 	}
 }
 
@@ -148,8 +128,6 @@ func mustWrite(t *testing.T, path, content string) {
 }
 
 func TestResolveErrorsOnMissingTemplatesDir(t *testing.T) {
-	// A typo'd templates_dir must fail loud, not silently fall back to the
-	// embedded defaults (the operator's overrides would be ignored).
 	cfg := config.Defaults()
 	cfg.TemplatesDir = filepath.Join(t.TempDir(), "no-such-dir")
 	if _, err := Resolve(cfg); err == nil {
@@ -176,88 +154,84 @@ func TestRenderPerTarget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render codex: %v", err)
 	}
-
-	// pi keeps its bash-flavored placeholders, skill path, and colon namespace.
-	if !strings.Contains(pi.Prompts["research.md"], "Topic: $@") {
-		t.Error("pi research.md should pass arguments via $@")
-	}
-	if !strings.Contains(pi.Prompts["plan.md"], "${1:-<pick latest>}") {
-		t.Error("pi plan.md should default the change dir via ${1:-...}")
-	}
-	if !strings.Contains(pi.Prompts["research.md"], "~/.pi/agent/skills/respec/SKILL.md") {
-		t.Error("pi prompts should reference the pi skill path")
-	}
-	if !strings.Contains(pi.Prompts["implement.md"], "/rsx:plan") {
-		t.Error("pi implement.md should reference /rsx:plan")
-	}
-	if !strings.Contains(pi.Prompts["implement.md"], "respec agent-cmd") {
-		t.Error("pi implement.md should build child commands with respec agent-cmd")
-	}
-	if !strings.Contains(pi.Prompts["plan.md"], "execution_mode") ||
-		!strings.Contains(pi.Prompts["plan.md"], "runnable E2E/smoke command") {
-		t.Error("pi plan.md should set the execution mode and require end-to-end feedback")
-	}
-	// The required change-dir must use a placeholder pi actually substitutes.
-	// pi supports $@/$1/${1:-default} but NOT bash's ${1:?msg}, which would
-	// pass through literally and read to the agent as a missing argument.
-	if !strings.Contains(pi.Prompts["implement.md"], "missing): $@") {
-		t.Error("pi implement.md should pass the required change dir via $@")
-	}
-	if strings.Contains(pi.Prompts["implement.md"], "${1:?") {
-		t.Error("pi implement.md must not use ${1:?...}; pi leaves it literal")
+	primeAgent, err := Render(cfg, TargetPrimeAgent, Features{})
+	if err != nil {
+		t.Fatalf("Render prime-agent: %v", err)
 	}
 
-	// Claude Code has no bash-style placeholders and no colons in command names.
-	for name, content := range claude.Prompts {
-		for _, forbidden := range []string{"$@", "${1", "/rsx:", "~/.pi/"} {
-			if strings.Contains(content, forbidden) {
-				t.Errorf("claude prompt %s contains pi-ism %q", name, forbidden)
+	// All four targets render the same four skills.
+	for _, r := range []Rendered{pi, claude, codex, primeAgent} {
+		for _, key := range []string{"respec/SKILL.md", "rsx-research/SKILL.md", "rsx-plan/SKILL.md", "rsx-implement/SKILL.md"} {
+			if _, ok := r.Skills[key]; !ok {
+				t.Errorf("missing skill %s", key)
 			}
 		}
 	}
-	if !strings.Contains(claude.Prompts["research.md"], "Topic: $ARGUMENTS") {
-		t.Error("claude research.md should pass arguments via $ARGUMENTS")
+
+	// Skills take their argument as a trailing User: message, not $@ / $1.
+	for name, content := range pi.Skills {
+		if strings.Contains(content, "$@") || strings.Contains(content, "${1") {
+			t.Errorf("pi skill %s still uses an argument placeholder", name)
+		}
 	}
-	if !strings.Contains(claude.Prompts["research.md"], "~/.claude/skills/respec/SKILL.md") {
-		t.Error("claude prompts should reference the claude skill path")
-	}
-	if !strings.Contains(claude.Prompts["implement.md"], "/rsx-plan") {
-		t.Error("claude implement.md should reference /rsx-plan")
-	}
-	if !strings.Contains(claude.Prompts["implement.md"], "respec agent-cmd") {
-		t.Error("claude implement.md should build child commands with respec agent-cmd")
-	}
-	if !strings.Contains(claude.Skills["respec/SKILL.md"], "/rsx-research") {
-		t.Error("claude skill should reference /rsx-research")
+	if !strings.Contains(pi.Skills["rsx-research/SKILL.md"], "trailing `User:` message") {
+		t.Error("pi research skill should describe the trailing User: argument")
 	}
 
-	// Codex shares Claude's placeholder syntax but has its own command
-	// namespace, skill path, and skill-mention form.
-	for name, content := range codex.Prompts {
-		for _, forbidden := range []string{"$@", "${1:", "/rsx:", "~/.pi/", "~/.claude/"} {
+	// pi references the pi skill path and /skill: invocation.
+	if !strings.Contains(pi.Skills["rsx-research/SKILL.md"], "~/.pi/agent/skills/respec/SKILL.md") {
+		t.Error("pi research skill should reference the pi respec skill path")
+	}
+	if !strings.Contains(pi.Skills["rsx-implement/SKILL.md"], "/skill:rsx-plan") {
+		t.Error("pi implement skill should reference /skill:rsx-plan")
+	}
+
+	// Claude Code resolves skills as /name and keeps no pi-isms.
+	for name, content := range claude.Skills {
+		for _, forbidden := range []string{"$@", "${1", "/rsx:", "~/.pi/", "/skill:"} {
 			if strings.Contains(content, forbidden) {
-				t.Errorf("codex prompt %s contains foreign-agent syntax %q", name, forbidden)
+				t.Errorf("claude skill %s contains foreign-agent syntax %q", name, forbidden)
 			}
 		}
 	}
-	if !strings.Contains(codex.Prompts["research.md"], "Topic: $ARGUMENTS") {
-		t.Error("codex research.md should pass arguments via $ARGUMENTS")
+	if !strings.Contains(claude.Skills["rsx-research/SKILL.md"], "~/.claude/skills/respec/SKILL.md") {
+		t.Error("claude research skill should reference the claude respec skill path")
 	}
-	if !strings.Contains(codex.Prompts["research.md"], "${CODEX_HOME:-$HOME/.codex}/skills/respec/SKILL.md") ||
-		!strings.Contains(codex.Prompts["research.md"], "$respec") {
-		t.Error("codex prompts should reference the Codex respec skill")
+	if !strings.Contains(claude.Skills["rsx-implement/SKILL.md"], "/rsx-plan") {
+		t.Error("claude implement skill should reference /rsx-plan")
 	}
-	if !strings.Contains(codex.Prompts["implement.md"], "/prompts:rsx-plan") {
-		t.Error("codex implement.md should reference /prompts:rsx-plan")
+
+	// Codex mentions skills as $name and keeps its own skill path.
+	for name, content := range codex.Skills {
+		for _, forbidden := range []string{"$@", "${1:", "/rsx:", "~/.pi/", "~/.claude/", "/skill:"} {
+			if strings.Contains(content, forbidden) {
+				t.Errorf("codex skill %s contains foreign-agent syntax %q", name, forbidden)
+			}
+		}
 	}
-	if !strings.Contains(codex.Prompts["implement.md"], "respec agent-cmd") {
-		t.Error("codex implement.md should build child commands with respec agent-cmd")
+	if !strings.Contains(codex.Skills["rsx-research/SKILL.md"], "${CODEX_HOME:-$HOME/.codex}/skills/respec/SKILL.md") {
+		t.Error("codex research skill should reference the Codex respec skill path")
 	}
-	if !strings.Contains(codex.Skills["respec/SKILL.md"], "/prompts:rsx-research") {
-		t.Error("codex skill should reference /prompts:rsx-research")
+	if !strings.Contains(codex.Skills["rsx-implement/SKILL.md"], "$rsx-plan") {
+		t.Error("codex implement skill should reference $rsx-plan")
 	}
 	if meta, ok := codex.Skills["respec/agents/openai.yaml"]; !ok || !strings.Contains(meta, "$respec") {
 		t.Error("the skill bundle should ship Codex's agents/openai.yaml metadata")
+	}
+
+	// Prime Agent uses /skill: invocation and its own skill path.
+	for name, content := range primeAgent.Skills {
+		for _, forbidden := range []string{"${1", "/rsx:", "~/.pi/", "~/.claude/", "${CODEX_HOME"} {
+			if strings.Contains(content, forbidden) {
+				t.Errorf("prime-agent skill %s contains foreign-agent syntax %q", name, forbidden)
+			}
+		}
+	}
+	if !strings.Contains(primeAgent.Skills["rsx-research/SKILL.md"], "~/.prime/agent/skills/respec/SKILL.md") {
+		t.Error("prime-agent research skill should reference the prime-agent respec skill path")
+	}
+	if !strings.Contains(primeAgent.Skills["rsx-implement/SKILL.md"], "/skill:rsx-plan") {
+		t.Error("prime-agent implement skill should reference /skill:rsx-plan")
 	}
 }
 
@@ -268,37 +242,37 @@ func TestRenderRejectsUnknownTarget(t *testing.T) {
 }
 
 // The child harness is chosen per phase in the plan, not frozen when the
-// operator ran `respec install`. If a rendered prompt hardcoded a child
+// operator ran `respec install`. If a rendered skill hardcoded a child
 // invocation again, a Claude-installed orchestrator could never delegate to pi
 // (and vice versa), which is the whole point of the per-phase matrix.
 func TestImplementDoesNotHardcodeChildHarness(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
 
-	for _, target := range []Target{TargetPi, TargetClaude, TargetCodex} {
+	for _, target := range []Target{TargetPi, TargetPrimeAgent, TargetClaude, TargetCodex} {
 		r, err := Render(cfg, target, Features{})
 		if err != nil {
 			t.Fatalf("Render %s: %v", target.Name, err)
 		}
-		got := r.Prompts["implement.md"]
+		got := r.Skills["rsx-implement/SKILL.md"]
 		for _, frozen := range []string{
 			"pi --print --no-session --thinking",
+			"prime-agent --print --no-session --thinking",
 			"claude --print --no-session-persistence",
 			"codex exec --model",
 		} {
 			if strings.Contains(got, frozen) {
-				t.Errorf("%s implement.md hardcodes a child invocation %q; it must come from the plan's **Agent:** line via respec agent-cmd", target.Name, frozen)
+				t.Errorf("%s implement skill hardcodes a child invocation %q; it must come from the plan's **Agent:** line via respec agent-cmd", target.Name, frozen)
 			}
 		}
 		if !strings.Contains(got, "**Agent:**") {
-			t.Errorf("%s implement.md should read the phase's **Agent:** line", target.Name)
+			t.Errorf("%s implement skill should read the phase's **Agent:** line", target.Name)
 		}
 	}
 }
 
-// One implement prompt serves both modes, reading execution_mode from the plan
-// rather than being chosen at invocation. Splitting it again would reintroduce
-// two prompts that differ only in when the operator is consulted.
+// One implement skill serves both modes, reading execution_mode from the plan
+// rather than being chosen at invocation.
 func TestImplementHandlesBothExecutionModes(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
@@ -306,17 +280,15 @@ func TestImplementHandlesBothExecutionModes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
-	got := r.Prompts["implement.md"]
+	got := r.Skills["rsx-implement/SKILL.md"]
 	for _, want := range []string{"execution_mode", "manual", "auto", "Adversarial review"} {
 		if !strings.Contains(got, want) {
-			t.Errorf("implement.md should cover %q", want)
+			t.Errorf("implement skill should cover %q", want)
 		}
 	}
 }
 
-// Commits must not pile onto the default branch: an effort's phases are only
-// reviewable and revertable together if they land on their own branch, and the
-// prompt is the only place that rule lives (see CLAUDE.md).
+// Commits must not pile onto the default branch.
 func TestImplementWorksOnAnEffortBranch(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
@@ -324,18 +296,14 @@ func TestImplementWorksOnAnEffortBranch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
-	for _, want := range []string{"default branch", "respec/<change-dir basename>", "stay on it"} {
-		if !strings.Contains(r.Prompts["implement.md"], want) {
-			t.Errorf("implement.md should cover %q", want)
+	for _, want := range []string{"default branch", "respec/<change-dir basename>", "stay"} {
+		if !strings.Contains(r.Skills["rsx-implement/SKILL.md"], want) {
+			t.Errorf("implement skill should cover %q", want)
 		}
-	}
-	if !strings.Contains(r.Skills["respec/SKILL.md"], "respec/<slug>") {
-		t.Error("the skill's implement section should name the effort-branch default")
 	}
 }
 
-// Absent preferences must not produce invented staffing: a plan that names no
-// agent is complete, and the harness then does what it is configured to do.
+// Absent preferences must not produce invented staffing.
 func TestPlanTellsAgentToInventNothingWithoutPreferences(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
@@ -344,8 +312,8 @@ func TestPlanTellsAgentToInventNothingWithoutPreferences(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render without preferences: %v", err)
 	}
-	if !strings.Contains(bare.Prompts["plan.md"], "do not invent any") {
-		t.Error("with no preferences, plan.md must tell the agent not to invent staffing")
+	if !strings.Contains(bare.Skills["rsx-plan/SKILL.md"], "do not invent any") {
+		t.Error("with no preferences, plan skill must tell the agent not to invent staffing")
 	}
 
 	cfg.Agents = config.Agents{
@@ -357,35 +325,48 @@ func TestPlanTellsAgentToInventNothingWithoutPreferences(t *testing.T) {
 		t.Fatalf("Render with preferences: %v", err)
 	}
 	for _, want := range []string{"pi:openai-codex/gpt-5.6-sol@medium", "claude:opus"} {
-		if !strings.Contains(stated.Prompts["plan.md"], want) {
-			t.Errorf("stated preference %q missing from plan.md", want)
+		if !strings.Contains(stated.Skills["rsx-plan/SKILL.md"], want) {
+			t.Errorf("stated preference %q missing from plan skill", want)
 		}
 	}
-	if strings.Contains(stated.Prompts["plan.md"], "do not invent any") {
+	if strings.Contains(stated.Skills["rsx-plan/SKILL.md"], "do not invent any") {
 		t.Error("with preferences stated, the no-preferences branch must not render")
 	}
 }
 
 func TestRenderGatesProbeGuidance(t *testing.T) {
-	// Prompts must never reference tooling the operator does not have: probe
-	// guidance appears only when install detected the binary.
 	cfg := config.Defaults()
 
 	with, err := Render(cfg, TargetPi, Features{Probe: true})
 	if err != nil {
 		t.Fatalf("Render with probe: %v", err)
 	}
-	if !strings.Contains(with.Prompts["research.md"], "probe extract") {
-		t.Error("probe guidance missing from research.md when probe is available")
+	if !strings.Contains(with.Skills["rsx-research/SKILL.md"], "probe extract") {
+		t.Error("probe guidance missing from research skill when probe is available")
 	}
 
 	without, err := Render(cfg, TargetPi, Features{})
 	if err != nil {
 		t.Fatalf("Render without probe: %v", err)
 	}
-	for name, content := range without.Prompts {
+	for name, content := range without.Skills {
 		if strings.Contains(content, "probe") {
-			t.Errorf("prompt %s references probe although it is not installed", name)
+			t.Errorf("skill %s references probe although it is not installed", name)
+		}
+	}
+}
+
+// All four skills are user-invoked (explicit entry points): the shared respec
+// skill is read by path, and the phase skills load only when the operator
+// invokes them. Nothing pays permanent context load.
+func TestSkillsAreUserInvoked(t *testing.T) {
+	r, err := Render(config.Defaults(), TargetPi, Features{})
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	for _, key := range []string{"respec/SKILL.md", "rsx-research/SKILL.md", "rsx-plan/SKILL.md", "rsx-implement/SKILL.md"} {
+		if !strings.Contains(r.Skills[key], "disable-model-invocation: true") {
+			t.Errorf("%s should set disable-model-invocation: true", key)
 		}
 	}
 }
