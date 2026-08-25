@@ -98,6 +98,16 @@ func TestRenderMermaidDiagrams(t *testing.T) {
 	if !strings.Contains(html, "mermaid.esm.min.mjs") {
 		t.Errorf("mermaid.js include missing from page with a diagram:\n%s", html)
 	}
+	for _, control := range []string{
+		`class="mermaid-viewer-control-panel"`,
+		`data-action="zoom-in"`,
+		`data-action="zoom-out"`,
+		`data-action="reset"`,
+	} {
+		if !strings.Contains(html, control) {
+			t.Errorf("mermaid viewer control %q missing from page:\n%s", control, html)
+		}
+	}
 }
 
 func TestRenderFailsLoudWithoutHugo(t *testing.T) {

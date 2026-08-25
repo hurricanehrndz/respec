@@ -296,13 +296,59 @@ main {
 .zoom-backdrop {
   position: fixed; inset: 0; z-index: 50;
   display: flex; align-items: center; justify-content: center;
-  padding: 24px; cursor: zoom-out;
+  padding: 24px;
   background: rgba(0,0,0,.82);
 }
-.zoom-backdrop > * { max-width: 96vw; max-height: 96vh; margin: 0; overflow: auto; }
-.zoom-backdrop img { width: auto; height: auto; }
-.zoom-backdrop pre.mermaid { background: var(--surface); padding: 20px; border-radius: 8px; }
-.zoom-backdrop svg { max-width: none !important; width: auto; height: auto; }
+.zoom-backdrop > img {
+  width: auto; height: auto;
+  max-width: 96vw; max-height: 96vh;
+  cursor: zoom-out;
+}
+.mermaid-viewer {
+  position: relative;
+  width: calc(100vw - 48px);
+  height: calc(100vh - 48px);
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface);
+}
+.mermaid-viewer-viewport {
+  width: 100%; height: 100%; overflow: hidden;
+  cursor: grab; touch-action: none; user-select: none;
+}
+.mermaid-viewer-viewport.dragging { cursor: grabbing; }
+.mermaid-viewer-viewport > pre.mermaid {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%; margin: 0; padding: 20px;
+  overflow: hidden; border: 0; background: var(--surface);
+}
+.mermaid-viewer-viewport svg {
+  width: 100% !important; height: 100% !important; max-width: none !important;
+  transform: translate(var(--mermaid-pan-x, 0), var(--mermaid-pan-y, 0)) scale(var(--mermaid-zoom, 1));
+  transform-origin: center;
+}
+.mermaid-viewer-control-panel {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px;
+  max-width: calc(100% - 24px); padding: 5px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: var(--shadow);
+}
+.mermaid-viewer-control-panel .btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: var(--text);
+  font: 600 1rem/1 sans-serif; cursor: pointer;
+}
+.mermaid-viewer-control-panel .btn:hover { border-color: var(--muted); background: var(--surface-2); }
+.mermaid-viewer-control-panel .btn:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
+@media (max-width: 600px) {
+  .zoom-backdrop { padding: 8px; }
+  .mermaid-viewer { width: calc(100vw - 16px); height: calc(100vh - 16px); }
+  .mermaid-viewer-control-panel { top: 8px; right: 8px; max-width: calc(100% - 16px); }
+}
 
 .empty { color: var(--muted); font-style: italic; padding: 20px 0; }
 </style>
