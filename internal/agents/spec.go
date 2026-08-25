@@ -129,6 +129,15 @@ func (s Spec) Command() ([]string, error) {
 			argv = append(argv, "--thinking", s.Effort)
 		}
 		return argv, nil
+	case HarnessPrimeAgent:
+		argv := []string{"prime-agent", "--print", "--no-session"}
+		if s.Model != "" {
+			argv = append(argv, "--model", s.Model)
+		}
+		if s.Effort != "" {
+			argv = append(argv, "--thinking", s.Effort)
+		}
+		return argv, nil
 	case HarnessClaude:
 		// CLAUDECODE is unset deliberately: Claude Code sets it in the parent
 		// and otherwise refuses to start a nested CLI session.

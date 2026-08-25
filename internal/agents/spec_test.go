@@ -13,12 +13,14 @@ func TestParseSpecRoundTrips(t *testing.T) {
 		"pi:openrouter/anthropic/claude-opus-5@max",
 		"claude:opus@high",
 		"codex:gpt-5.5@high",
+		"prime-agent:openai-codex/gpt-5.6-sol@medium",
 		// Model and effort are independently optional: an operator who stated
 		// no preference must get harness defaults, not a respec-chosen model.
 		"pi",
 		"pi@high",
 		"pi:openai-codex/gpt-5.6-sol",
 		"claude:opus",
+		"prime-agent",
 	} {
 		s, err := ParseSpec(raw)
 		if err != nil {
@@ -75,6 +77,8 @@ func TestCommandPerHarness(t *testing.T) {
 			"--model", "opus", "--effort", "high"}},
 		{"codex:gpt-5.5@high", []string{
 			"codex", "exec", "--model", "gpt-5.5", "-c", `model_reasoning_effort="high"`}},
+		{"prime-agent:openai-codex/gpt-5.6-sol@medium", []string{
+			"prime-agent", "--print", "--no-session", "--model", "openai-codex/gpt-5.6-sol", "--thinking", "medium"}},
 		// Unpinned fields are omitted, not defaulted: the harness already knows
 		// what the operator configured, and guessing would override it.
 		{"pi", []string{"pi", "--print", "--no-session"}},
@@ -82,6 +86,7 @@ func TestCommandPerHarness(t *testing.T) {
 		{"claude:opus", []string{
 			"env", "-u", "CLAUDECODE", "claude", "--print", "--no-session-persistence", "--model", "opus"}},
 		{"codex", []string{"codex", "exec"}},
+		{"prime-agent", []string{"prime-agent", "--print", "--no-session"}},
 	}
 	for _, c := range cases {
 		s, err := ParseSpec(c.spec)
@@ -134,7 +139,7 @@ func TestShellQuotesPromptPath(t *testing.T) {
 }
 
 func TestEffortsExposedPerHarness(t *testing.T) {
-	if len(Efforts(HarnessPi)) == 0 || len(Efforts(HarnessClaude)) == 0 || len(Efforts(HarnessCodex)) == 0 {
+	if len(Efforts(HarnessPi)) == 0 || len(Efforts(HarnessPrimeAgent)) == 0 || len(Efforts(HarnessClaude)) == 0 || len(Efforts(HarnessCodex)) == 0 {
 		t.Fatal("every known harness must publish its effort levels")
 	}
 	if Known("emacs") {

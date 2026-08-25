@@ -12,6 +12,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"sort"
 	"strings"
@@ -22,22 +23,24 @@ import (
 type Harness string
 
 const (
-	HarnessPi     Harness = "pi"
-	HarnessClaude Harness = "claude"
-	HarnessCodex  Harness = "codex"
+	HarnessPi         Harness = "pi"
+	HarnessPrimeAgent Harness = "prime-agent"
+	HarnessClaude     Harness = "claude"
+	HarnessCodex      Harness = "codex"
 )
 
 // Harnesses lists every harness respec knows how to drive, in preference
 // order for display.
-var Harnesses = []Harness{HarnessPi, HarnessClaude, HarnessCodex}
+var Harnesses = []Harness{HarnessPi, HarnessPrimeAgent, HarnessClaude, HarnessCodex}
 
 // efforts records the reasoning levels each harness accepts, weakest first.
 // These come from the CLIs' own help output and are validated before a command
 // is built so a plan cannot name a level its harness will reject at run time.
 var efforts = map[Harness][]string{
-	HarnessPi:     {"off", "minimal", "low", "medium", "high", "xhigh", "max"},
-	HarnessClaude: {"low", "medium", "high", "xhigh", "max"},
-	HarnessCodex:  {"minimal", "low", "medium", "high"},
+	HarnessPi:         {"off", "minimal", "low", "medium", "high", "xhigh", "max"},
+	HarnessPrimeAgent: {"off", "minimal", "low", "medium", "high", "xhigh", "max"},
+	HarnessClaude:     {"low", "medium", "high", "xhigh", "max"},
+	HarnessCodex:      {"minimal", "low", "medium", "high"},
 }
 
 // Efforts returns the reasoning levels a harness accepts, weakest first.
@@ -88,6 +91,12 @@ func enumerate(ctx context.Context, h Harness) ([]string, string) {
 			return nil, fmt.Sprintf("could not list pi models: %v", err)
 		}
 		return models, ""
+	case HarnessPrimeAgent:
+		models, err := primeAgentModels(ctx)
+		if err != nil {
+			return nil, fmt.Sprintf("could not list prime-agent models: %v", err)
+		}
+		return models, ""
 	case HarnessClaude:
 		// Claude Code has no list-models command; these are the aliases its
 		// --model flag documents. Full model IDs are also accepted.
@@ -110,15 +119,39 @@ func piModels(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseModelTable(out)
+}
 
+// primeAgentModels runs `prime-agent model list` and returns provider/id
+// pairs. Two quirks differ from pi: the table is written to stderr, and a set
+// AWS_PROFILE makes prime-agent enumerate the operator's AWS bedrock models
+// instead of the models its own account can reach, so the profile is unset for
+// the probe.
+func primeAgentModels(ctx context.Context) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "prime-agent", "model", "list")
+	cmd.Env = withoutEnv(os.Environ(), "AWS_PROFILE")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+	return parseModelTable(out)
+}
+
+// parseModelTable reads the "provider model context max-out thinking images"
+// table both pi and prime-agent emit and returns provider/id pairs, the form
+// their --model flags accept.
+func parseModelTable(out []byte) ([]string, error) {
 	var models []string
 	seen := map[string]bool{}
 	sc := bufio.NewScanner(strings.NewReader(string(out)))
 	for sc.Scan() {
 		fields := strings.Fields(sc.Text())
-		// Rows are "provider model context max-out thinking images"; the
-		// header row names its first column "provider".
-		if len(fields) < 2 || fields[0] == "provider" {
+		// The header names its first column "provider"; a Node warning line
+		// (emitted when FORCE_COLOR is set) starts with "(".
+		if len(fields) < 2 || fields[0] == "provider" || strings.HasPrefix(fields[0], "(") {
 			continue
 		}
 		id := fields[0] + "/" + fields[1]
@@ -132,4 +165,16 @@ func piModels(ctx context.Context) ([]string, error) {
 	}
 	sort.Strings(models)
 	return models, nil
+}
+
+// withoutEnv returns env with the named variable removed.
+func withoutEnv(env []string, name string) []string {
+	prefix := name + "="
+	out := make([]string, 0, len(env))
+	for _, kv := range env {
+		if !strings.HasPrefix(kv, prefix) {
+			out = append(out, kv)
+		}
+	}
+	return out
 }
