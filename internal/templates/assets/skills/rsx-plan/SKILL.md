@@ -35,13 +35,6 @@ The work is otherwise the same in both modes.
 Close every gap before choosing an approach. Ask only what inspection cannot answer. If the
 operator corrects your understanding, verify the correction against the code before using it. The
 finished plan has no unresolved questions.
-{{if .HasProbe}}
-`probe` is installed. Use it to verify that a symbol or signature the plan names still exists
-without reading an unrelated whole file:
-
-    probe extract <file>#<symbol>    # extract one function or class by name
-    probe extract <file>:<line>      # extract the block containing a line
-{{end}}
 Delegate broad sweeps such as caller audits and package-wide pattern surveys under the shared
 policy. Keep design judgment and operator conversation in this session.
 

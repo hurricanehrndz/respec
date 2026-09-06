@@ -15,7 +15,7 @@ func TestRenderSubstitutesStoreAndInjects(t *testing.T) {
 	cfg.Context = "SHARED-CONTEXT-MARKER"
 	cfg.Rules.Research = "RESEARCH-RULE-MARKER"
 
-	r, err := Render(cfg, TargetPi, Features{})
+	r, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestRenderSubstitutesStoreAndInjects(t *testing.T) {
 func TestRenderOmitsEmptyContextAndRules(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
-	r, err := Render(cfg, TargetPi, Features{})
+	r, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestRenderLayersOverrideOverEmbedded(t *testing.T) {
 	cfg.Store = "/tmp/over"
 	cfg.TemplatesDir = dir
 
-	r, err := Render(cfg, TargetPi, Features{})
+	r, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestResolveErrorsOnMissingTemplatesDir(t *testing.T) {
 	if _, err := Resolve(cfg); err == nil {
 		t.Fatal("expected error for nonexistent templates_dir")
 	}
-	if _, err := Render(cfg, TargetPi, Features{}); err == nil {
+	if _, err := Render(cfg, TargetPi); err == nil {
 		t.Fatal("Render should propagate the missing-dir error")
 	}
 }
@@ -142,19 +142,19 @@ func TestRenderPerTarget(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
 
-	pi, err := Render(cfg, TargetPi, Features{})
+	pi, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render pi: %v", err)
 	}
-	claude, err := Render(cfg, TargetClaude, Features{})
+	claude, err := Render(cfg, TargetClaude)
 	if err != nil {
 		t.Fatalf("Render claude: %v", err)
 	}
-	codex, err := Render(cfg, TargetCodex, Features{})
+	codex, err := Render(cfg, TargetCodex)
 	if err != nil {
 		t.Fatalf("Render codex: %v", err)
 	}
-	primeAgent, err := Render(cfg, TargetPrimeAgent, Features{})
+	primeAgent, err := Render(cfg, TargetPrimeAgent)
 	if err != nil {
 		t.Fatalf("Render prime-agent: %v", err)
 	}
@@ -236,7 +236,7 @@ func TestRenderPerTarget(t *testing.T) {
 }
 
 func TestRenderRejectsUnknownTarget(t *testing.T) {
-	if _, err := Render(config.Defaults(), Target{Name: "emacs"}, Features{}); err == nil {
+	if _, err := Render(config.Defaults(), Target{Name: "emacs"}); err == nil {
 		t.Fatal("expected error for unknown target")
 	}
 }
@@ -250,7 +250,7 @@ func TestImplementDoesNotHardcodeChildHarness(t *testing.T) {
 	cfg.Store = "/tmp/s"
 
 	for _, target := range []Target{TargetPi, TargetPrimeAgent, TargetClaude, TargetCodex} {
-		r, err := Render(cfg, target, Features{})
+		r, err := Render(cfg, target)
 		if err != nil {
 			t.Fatalf("Render %s: %v", target.Name, err)
 		}
@@ -276,7 +276,7 @@ func TestImplementDoesNotHardcodeChildHarness(t *testing.T) {
 func TestImplementHandlesBothExecutionModes(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
-	r, err := Render(cfg, TargetPi, Features{})
+	r, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -292,7 +292,7 @@ func TestImplementHandlesBothExecutionModes(t *testing.T) {
 func TestImplementWorksOnAnEffortBranch(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
-	r, err := Render(cfg, TargetPi, Features{})
+	r, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -308,7 +308,7 @@ func TestPlanTellsAgentToInventNothingWithoutPreferences(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.Store = "/tmp/s"
 
-	bare, err := Render(cfg, TargetPi, Features{})
+	bare, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render without preferences: %v", err)
 	}
@@ -320,7 +320,7 @@ func TestPlanTellsAgentToInventNothingWithoutPreferences(t *testing.T) {
 		Implementer: "pi:openai-codex/gpt-5.6-sol@medium",
 		Reviewer:    "claude:opus",
 	}
-	stated, err := Render(cfg, TargetPi, Features{})
+	stated, err := Render(cfg, TargetPi)
 	if err != nil {
 		t.Fatalf("Render with preferences: %v", err)
 	}
@@ -334,33 +334,11 @@ func TestPlanTellsAgentToInventNothingWithoutPreferences(t *testing.T) {
 	}
 }
 
-func TestRenderGatesProbeGuidance(t *testing.T) {
-	cfg := config.Defaults()
-
-	with, err := Render(cfg, TargetPi, Features{Probe: true})
-	if err != nil {
-		t.Fatalf("Render with probe: %v", err)
-	}
-	if !strings.Contains(with.Skills["rsx-research/SKILL.md"], "probe extract") {
-		t.Error("probe guidance missing from research skill when probe is available")
-	}
-
-	without, err := Render(cfg, TargetPi, Features{})
-	if err != nil {
-		t.Fatalf("Render without probe: %v", err)
-	}
-	for name, content := range without.Skills {
-		if strings.Contains(content, "probe") {
-			t.Errorf("skill %s references probe although it is not installed", name)
-		}
-	}
-}
-
 // All four skills are user-invoked (explicit entry points): the shared respec
 // skill is read by path, and the phase skills load only when the operator
 // invokes them. Nothing pays permanent context load.
 func TestSkillsAreUserInvoked(t *testing.T) {
-	r, err := Render(config.Defaults(), TargetPi, Features{})
+	r, err := Render(config.Defaults(), TargetPi)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

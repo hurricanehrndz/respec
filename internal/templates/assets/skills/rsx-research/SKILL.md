@@ -20,13 +20,6 @@ questions: where the relevant components live, how the code works, and how this 
 solves similar problems. Ground every finding in code you read, with `file:line` references.
 External tools, APIs, and prior art may also be evidence. Finding that almost nothing exists yet is
 still a useful result.
-{{if .HasProbe}}
-`probe` is installed. Locate a symbol with grep, then extract its exact tree-sitter block when a
-whole-file read is unnecessary:
-
-    probe extract <file>#<symbol>    # extract one function or class by name
-    probe extract <file>:<line>      # extract the block containing a line
-{{end}}
 Delegate broad reading as described in the respec skill. Keep the operator conversation and final
 synthesis here. Distill every durable finding into `research.md`; the context window is disposable,
 but the artifact is not. If context runs low, record remaining work under **Open Questions** and

@@ -213,3 +213,67 @@ func TestInstallIsIdempotent(t *testing.T) {
 		t.Error("install not idempotent: second run produced different bytes")
 	}
 }
+
+// The pre-migration install wrote prompt templates; the skills-only install
+// must remove them so they do not linger as slash commands pointing at a
+// workflow that no longer exists. Other files in the same directory are not
+// respec's.
+func TestInstallPrunesRetiredPrompts(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("CODEX_HOME", "")
+
+	promptsDir := filepath.Join(home, ".pi", "agent", "prompts")
+	retired := []string{"rsx:research.md", "rsx:plan.md", "rsx:implement.md"}
+	foreign := "someone-elses.md"
+	for _, name := range append(retired, foreign) {
+		if err := os.MkdirAll(promptsDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(promptsDir, name), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	rootCmd.SetArgs([]string{"install", "--target", "pi"})
+	rootCmd.SetOut(os.NewFile(0, os.DevNull))
+	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+
+	for _, name := range retired {
+		if _, err := os.Stat(filepath.Join(promptsDir, name)); !os.IsNotExist(err) {
+			t.Errorf("retired prompt %s should have been removed", name)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(promptsDir, foreign)); err != nil {
+		t.Errorf("non-respec prompt must be left alone: %v", err)
+	}
+}
+
+// A prompt directory emptied by the cleanup goes with it.
+func TestInstallRemovesEmptiedPromptDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("CODEX_HOME", "")
+
+	promptsDir := filepath.Join(home, ".pi", "agent", "prompts")
+	if err := os.MkdirAll(promptsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(promptsDir, "rsx:research.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.SetArgs([]string{"install", "--target", "pi"})
+	rootCmd.SetOut(os.NewFile(0, os.DevNull))
+	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+
+	if _, err := os.Stat(promptsDir); !os.IsNotExist(err) {
+		t.Errorf("emptied prompt dir %s should have been removed", promptsDir)
+	}
+}

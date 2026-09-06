@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -29,8 +28,7 @@ func init() {
 			if err != nil {
 				return err
 			}
-			feats := detectFeatures(c)
-			rendered, err := templates.Render(cfg, target, feats)
+			rendered, err := templates.Render(cfg, target)
 			if err != nil {
 				return err
 			}
@@ -46,37 +44,30 @@ func init() {
 	rootCmd.AddCommand(cmd)
 }
 
-// detectFeatures probes PATH for optional operator tooling the templates can
-// reference, reporting what was (not) found so the operator knows to re-run
-// install after installing a tool.
-func detectFeatures(c *cobra.Command) templates.Features {
-	feats := templates.Features{}
-	if _, err := exec.LookPath("probe"); err == nil {
-		feats.Probe = true
-		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe found on PATH: skills include probe extract guidance")
-	} else {
-		_, _ = fmt.Fprintln(c.OutOrStdout(), "probe not found on PATH: skills omit probe guidance (re-run install after installing it)")
-	}
-	return feats
-}
-
 // installFor writes the rendered skills into the target agent's user-scope
-// skills directory.
+// skills directory and removes the prompt files the pre-migration install used
+// to write.
 func installFor(c *cobra.Command, target templates.Target, home string, rendered templates.Rendered) error {
-	var skillsDir string
+	var skillsDir, promptDir, promptPrefix string
 	switch target {
 	case templates.TargetPi:
 		skillsDir = filepath.Join(home, ".pi", "agent", "skills")
+		promptDir = filepath.Join(home, ".pi", "agent", "prompts")
+		promptPrefix = "rsx:"
 	case templates.TargetPrimeAgent:
 		skillsDir = filepath.Join(home, ".prime", "agent", "skills")
 	case templates.TargetClaude:
 		skillsDir = filepath.Join(home, ".claude", "skills")
+		promptDir = filepath.Join(home, ".claude", "commands")
+		promptPrefix = "rsx-"
 	case templates.TargetCodex:
 		codexHome := os.Getenv("CODEX_HOME")
 		if codexHome == "" {
 			codexHome = filepath.Join(home, ".codex")
 		}
 		skillsDir = filepath.Join(codexHome, "skills")
+		promptDir = filepath.Join(codexHome, "prompts")
+		promptPrefix = "rsx-"
 	default:
 		return fmt.Errorf("no install layout for target %q", target.Name)
 	}
@@ -87,7 +78,44 @@ func installFor(c *cobra.Command, target templates.Target, home string, rendered
 		}
 		_, _ = fmt.Fprintf(c.OutOrStdout(), "installed skill:  %s\n", dst)
 	}
-	return pruneStaleSkills(c, skillsDir, rendered.Skills)
+	if err := pruneStaleSkills(c, skillsDir, rendered.Skills); err != nil {
+		return err
+	}
+	return pruneRetiredPrompts(c, promptDir, promptPrefix)
+}
+
+// pruneRetiredPrompts removes the prompt files respec installed before the
+// skills migration. They live in a directory the skills-only install no longer
+// writes, so without this they would linger as slash commands pointing at a
+// workflow that no longer exists. Only the rsx: / rsx- names respec owns are
+// touched, and a directory emptied by the removals is removed.
+func pruneRetiredPrompts(c *cobra.Command, dir, prefix string) error {
+	if dir == "" || prefix == "" {
+		return nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	removed := false
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), prefix) {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+		removed = true
+		_, _ = fmt.Fprintf(c.OutOrStdout(), "removed retired prompt: %s\n", path)
+	}
+	if removed {
+		_ = os.Remove(dir) // succeeds only when the directory is now empty
+	}
+	return nil
 }
 
 // pruneStaleSkills removes files respec no longer renders from the skill
