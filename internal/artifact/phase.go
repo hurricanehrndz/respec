@@ -18,9 +18,8 @@ import (
 // to one phase, and phases are body sections; keying frontmatter by phase
 // number would break the moment a phase is renamed or reordered.
 //
-// It is always optional. Its absence means the operator stated no delegation
-// preference, so the harness does whatever it is already configured to do —
-// which is also why plans written before this existed keep working.
+// It is always optional. Without it, implementation uses native workers and
+// any preferences recorded in plan prose. Older plans keep working unchanged.
 const agentLinePrefix = "**Agent:**"
 
 // operatorMarker labels a verification item only a human can perform.
@@ -92,11 +91,9 @@ func headingText(line string) (string, bool) {
 // appendPhaseProblems validates each phase's delegation assignment and, for
 // auto plans, its operator gates.
 //
-// The `**Agent:**` line is never required. An unassigned phase means no
-// preference was stated, and the harness then does what it would normally do;
-// requiring it would break every plan written before delegation existed. A
-// malformed spec is always an error though, because it fails only once the
-// phase is already running.
+// The `**Agent:**` line is never required. Native preferences stay in prose;
+// only explicit external assignments need CLI spec validation. A malformed
+// spec is always an error because it would fail during phase execution.
 //
 // Under `execution_mode: auto` an `Operator:` check outside the final phase is
 // rejected. That is the whole point of an auto plan — it must reach the end

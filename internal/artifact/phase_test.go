@@ -44,9 +44,8 @@ func TestPhasesPairSpecsWithHeadings(t *testing.T) {
 	}
 }
 
-// The **Agent:** line is optional in every mode. Requiring it would break every
-// plan written before delegation existed; absence means no preference was
-// stated, so the harness does what it would normally do.
+// The **Agent:** line is optional in every mode. Requiring it would break
+// native-worker plans and plans written before delegation existed.
 func TestAgentLineIsNeverRequired(t *testing.T) {
 	body := "## Overview\no\n\n## Phase 1: Unassigned\nchanges\n"
 	for _, mode := range []string{"auto", "manual", ""} {
@@ -54,6 +53,38 @@ func TestAgentLineIsNeverRequired(t *testing.T) {
 			if strings.Contains(p, agentLinePrefix) {
 				t.Errorf("mode %q: agent line must not be required, got %q", mode, p)
 			}
+		}
+	}
+}
+
+// Native model hints belong to the app, not the external CLI spec parser.
+func TestNativeWorkerPreferencesStayProse(t *testing.T) {
+	body := `## Overview
+Use native workers.
+
+## Worker preferences
+- Implementation: prefer app-model at medium effort
+- Review: prefer app-reviewer at high effort
+- Commits: native defaults
+- Fallback: native defaults; report unavailable preferences
+
+## Phase 1: Implement
+Implementation: prefer another-app-model for this phase.
+
+### Automated Verification
+- [ ] Run tests
+
+### Manual Verification
+- [ ] Orchestrator: inspect the diff
+`
+	for _, mode := range []string{"auto", "manual"} {
+		plan := planWithBody(mode, body)
+		if problems := plan.Validate(); len(problems) != 0 {
+			t.Errorf("%s: native preferences must not need CLI specs: %v", mode, problems)
+		}
+		phases := plan.Phases()
+		if len(phases) != 1 || phases[0].Agent != "" {
+			t.Errorf("%s: native preferences became an external assignment: %+v", mode, phases)
 		}
 	}
 }

@@ -55,21 +55,25 @@ first unchecked item.
 
 ## Per-phase loop
 
+Use the worker preferences recorded in `plan.md` for implementation, review, commits, and fallback.
+Phase-specific choices override the plan-wide choices for that role. Do not reload standing agent
+preferences from config or replace the plan's choices with installed skill defaults. If a plan
+has no worker preferences, use native defaults while honoring any existing `**Agent:**` lines.
+
 Run phases one at a time. Children share a working tree; concurrent work would mix incomplete
 diffs, reviews, and commits.
 
 ### 1. Implement
 
-Honor a phase's `**Agent:** <spec>` line. Invoke that agent with:
+Without an `**Agent:**` line, use native subagents under the shared delegation policy. Apply any
+native-worker preferences from the plan and phase; otherwise use the environment's defaults.
+Implement in the current session only when delegation costs more than the work or native subagents
+are unavailable, subject to the plan's fallback. Report when no independent worker was used.
 
-    respec agent-cmd '<spec>' --prompt-file <file>
+A phase's `**Agent:** <spec>` line names an external CLI. Honor it using the shared external CLI
+delegation instructions, not by silently translating it to a native worker.
 
-Without an `**Agent:**` line, use the current harness's native child mechanism and configured
-defaults. Do not invent a model. Implement the phase yourself only when it is small enough that
-delegation costs more than the work.
-
-Write the phase task to a private temporary file as required by the shared delegation policy. Tell
-the implementer to:
+Tell the implementer to:
 
 - read the named plan and spec, then implement only the current phase in the worked-on repository;
 - follow repository instructions and make the smallest complete change;
@@ -77,16 +81,16 @@ the implementer to:
 - not commit or edit respec artifacts;
 - report changed files, checks, and deviations.
 
-If the child fails, report its exit status and output. Give a fresh child on the same agent spec a
-bounded correction with the concrete failure. Do not silently take over, since that removes the
-second pair of eyes used by the review loop.
+If the child fails, report the failure and available diagnostics. Give a fresh child using the
+same execution mechanism and assignment a bounded correction with the concrete failure. Do not
+silently take over, since that removes the second pair of eyes used by the review loop.
 
 ### 2. Adversarial review
 
-Get an independent reading of the phase diff before judging it. Use the operator's reviewer choice
-when one exists. Otherwise use a native child or your own judgment when no reviewer is available.
-A missing reviewer lowers review quality but never stops the run; report that you proceeded
-without one.
+Get an independent reading of the phase diff before judging it. Apply the plan's reviewer choice
+under the shared delegation policy. Otherwise use a native child. If no reviewer is available,
+follow the plan's fallback; absent a stricter fallback, review it yourself and report that no
+independent reviewer was used.
 
 Give the reviewer the phase text, spec, and diff. Ask one narrow question:
 
@@ -95,7 +99,7 @@ Give the reviewer the phase text, spec, and diff. Ask one narrow question:
 
 Treat findings as claims, not verdicts. Verify each claim against the plan, research decisions, and
 code. Apply real findings, discard noise, and report both decisions. Prefer a reviewer from a
-different model family than the implementer.
+different model family when the chosen mechanism supports it.
 
 ### 3. Orchestrator gate
 
@@ -118,8 +122,9 @@ committing.
 
 ### 4. Commit the phase
 
-Commit only an accepted phase. In manual mode, wait for operator approval first. Use the operator's
-committer choice or the cheapest capable delegate because an accepted commit is mechanical.
+Commit only an accepted phase. In manual mode, wait for operator approval first. Apply the plan's
+committer choice under the shared delegation policy. Otherwise use a native committer or commit in
+the current session; do not choose an external CLI just to get a cheaper model.
 
 Tell the committer to inspect the accepted diff, follow repository commit instructions, and commit
 exactly that cohesive phase. It must not amend, include unrelated files, change implementation, or
@@ -139,8 +144,11 @@ Do not improvise around a missing file, symbol, command, behavior, or agent. Sto
     Why this matters: <impact on correctness or scope>
     Suggested next step: <narrow plan update or operator guidance>
 
-For an unreachable named agent, run `respec agents` again. Use the `**Agent:**` reasoning to derive
-an equivalent, then tell the operator what you substituted.
+If a worker preference cannot be honored, follow the plan's fallback and report the limitation.
+For an unreachable external assignment, run `respec agents` again. Use the `**Agent:**` reasoning
+to find an equivalent model on the chosen executor and report the substitution. Ask before
+switching executors. For native workers, use the environment's own availability and failure
+signals, not the CLI roster.
 
 ## Complete the effort
 

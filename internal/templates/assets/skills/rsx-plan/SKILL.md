@@ -48,42 +48,36 @@ before adding detail. In auto mode, decide the outline yourself.
 
 ## Staff the phases
 
-{{if .Agents.Stated -}}
-The operator has stated these delegation preferences:
-{{if .Agents.Implementer}}
-- implementer: `{{.Agents.Implementer}}`
-{{- end}}{{if .Agents.Reviewer}}
-- reviewer: `{{.Agents.Reviewer}}`
-{{- end}}{{if .Agents.Committer}}
-- committer: `{{.Agents.Committer}}`
-{{- end}}{{if .Agents.Notes}}
-- notes: {{.Agents.Notes}}
-{{- end}}
+Ask the operator which worker preferences they want for this effort: native defaults, particular
+models or effort levels for implementation, review, and commits, or explicit external executors.
+Do not re-ask choices already settled in this session or the research decisions. To consult
+standing defaults, run `respec config print` and read `agents:`. Treat config as optional defaults,
+not assignments; the operator's choices for this effort win in both execution modes.
 
-Treat these as the operator's standing stance, not as a per-phase decision. Apply them where they
-fit and depart only with a stated reason — a phase whose difficulty clearly warrants something
-else, or a preference naming a model this machine cannot reach.
-{{- else -}}
-The operator has stated no delegation preferences. Unless they say otherwise in this session,
-**do not invent any** — write no `**Agent:**` lines and let each harness do what it is already
-configured to do. That is a legitimate, complete plan and keeps plans portable between machines.
-Record staffing only if the operator asks for it here.
-{{- end}}
+Preserve an existing plan's worker choices unless the operator changes them. Do not replace them
+with newer config values when amending the plan. If no preferences are stated, **do not invent
+any**. Omit worker preferences and `**Agent:**` lines and use native defaults.
 
-When staffing is in play, check what this machine can actually reach before naming anything —
-`respec agents` (add `--filter <substr>` on a large catalogue). A preference naming a model that is
-not installed here is worth telling the operator about rather than silently substituting.
+Record the chosen implementer, reviewer, committer, and fallback in `plan.md` under **Worker
+preferences**, omitting roles with no preference. Put phase-specific overrides in that phase's
+prose. For native workers, omit `**Agent:**`. Express model and effort hints using controls the
+environment exposes; do not select a CLI merely to express those hints in an agent spec. An
+external reviewer or committer is recorded as an explicit external agent spec in the role's prose.
 
-Record each choice and why it fits the phase:
+Only for an explicit external executor choice, probe with `respec agents` before recording the
+assignment. Add `--filter <substr>` on a large catalogue. This probes CLIs, not native workers.
+Report an unreachable preference; do not silently choose another executor.
+
+For a phase assigned to an external implementer, record the choice and why it fits:
 
     ## Phase 2: <name>
-    **Agent:** pi:openai-codex/gpt-5.6-sol@medium — mechanical work; a cheaper model is enough
+    **Agent:** pi:openai-codex/gpt-5.6-sol@medium — operator chose pi; mechanical work
 
-The reason lets an implementer substitute an equivalent if the named model later becomes
-unreachable. Model and effort are optional. In manual mode, recommend the delegation matrix beside
-the phase outline and let the operator settle it. In auto mode, resolve it yourself and ask only
-when no reachable choice fits. Prefer a reviewer from a different model family than the
-implementer.
+The reason lets an implementer find an equivalent model on the chosen executor if needed. Model
+and effort are optional. In manual mode, recommend assignments beside the phase outline and let
+the operator settle them. In auto mode, resolve them within the operator's explicit executor
+choices and ask when no reachable choice fits. Prefer a reviewer from a different model family
+when the chosen mechanism supports it.
 
 ## Write the artifacts
 
@@ -125,8 +119,15 @@ Use this `plan.md` body:
     ## What We're NOT Doing
     <explicit exclusions that prevent scope creep>
 
+    ## Worker preferences
+    <!-- Optional: omit when none stated; omit roles without a preference. -->
+    - Implementation: <native model/effort hints, or external with per-phase Agent lines>
+    - Review: <native model/effort hints, or explicit external agent spec>
+    - Commits: <native model/effort hints, or explicit external agent spec>
+    - Fallback: <what to do if a preference cannot be honored>
+
     ## Phase 1: <name>
-    **Agent:** <spec> — <why this one>   <!-- omit when the operator stated no preference -->
+    **Agent:** <spec> — <why this one>   <!-- external implementers only; omit for native workers -->
     <files to change and the exact changes>
 
     ### Automated Verification

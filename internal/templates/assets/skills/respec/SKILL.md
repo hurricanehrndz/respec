@@ -53,24 +53,39 @@ audits, pattern surveys, bulk reads, and whole implementation phases. Keep a que
 two reads in the current session. Keep operator dialogue and synthesis in the orchestrating
 session because those require the full context and live steering.
 
-Discover the agents this machine can reach, then build an exact command:
+Use the current environment's native subagent mechanism by default for research, implementation,
+review, and commits. Let it deliver tasks and manage worker sessions; do not add CLI discovery,
+shell commands, or prompt files to native delegation. Use the environment's defaults unless the
+operator states a preference. Apply native model and effort choices only through controls the
+environment actually exposes; report unsupported preferences rather than switching executors. If
+native subagents are unavailable, work in the current session and report the limitation, unless
+the plan's fallback requires stopping.
 
-    respec agents                                   # harnesses, effort levels, and models
-    respec agents --filter <substr>                 # narrow a large catalogue
-    respec agent-cmd '<spec>' --prompt-file <file>  # exact child command
+Worker choices belong to the effort's `plan.md`, settled during planning, not to installed skills.
+Standing `agents:` config values are optional planning inputs; implementation follows the plan,
+not live config. Only an explicit external executor choice in the plan or this session opts that
+work into CLI delegation. Model, effort, and cost preferences alone do not authorize an external CLI.
+A choice for one role does not opt other roles into external execution. If an existing CLI assignment conflicts with a
+request for native workers, ask the operator to settle the assignment before proceeding.
 
-An agent spec is `<harness>[:<model>][@<effort>]`, for example
-`pi:openai-codex/gpt-5.6-sol@medium`, `claude:opus`, or bare `pi`. Model and effort are optional.
-Omitting either uses that harness's configured default.
+Run children one at a time when they share a working tree.
 
-Write the child task to a private temporary file, pass it with `--prompt-file`, and remove it when
-the task ends. Never interpolate a prompt into a shell command and never use `eval`. Run children
-one at a time when they share a working tree.
+### External CLI delegation
 
-The operator's standing preferences live under `agents:` in `config.yaml`. They cover
-implementer, reviewer, committer, and notes. A plan records the per-phase decision made from those
-preferences. If the operator stated no preference, invent none: omit the `**Agent:**` line and let
-the harness use its configured defaults.
+For explicitly chosen external executors, discover available CLIs and build the launch command:
+
+    respec agents                                  # external CLIs, effort levels, and models
+    respec agents --filter <substr>                # narrow a large catalogue
+    respec agent-cmd '<spec>' --prompt-file <file>   # print the external child command
+
+These commands do not discover or launch app-native workers. An agent spec is
+`<harness>[:<model>][@<effort>]`, for example `pi:openai-codex/gpt-5.6-sol@medium`, `claude:opus`,
+or bare `pi`. Every harness name identifies an external CLI, including `codex`, not an app-native
+worker. Model and effort are optional; omitting either uses that CLI's configured default.
+
+Write the external child's task to a private temporary file, pass it with `--prompt-file`, execute
+the printed command, and remove the file when the task ends. Never assemble child flags yourself,
+interpolate a prompt into a shell command, or use `eval`.
 
 ## Staleness model
 
@@ -80,7 +95,7 @@ This is one-directional because the plan must track the current spec.
 
 ## CLI reference
 
-    respec config get|set|path           # configuration (~/.config/respec/config.yaml)
+    respec config print|get|set|path     # effective config or individual values
     respec install --target <agent>      # install at user scope (pi | prime-agent | claude | codex)
     respec stamp <change-dir> [--repo <path>]
                                          # write provenance and spec_sha256, then reflow artifacts
@@ -89,9 +104,9 @@ This is one-directional because the plan must track the current spec.
     respec status <change-dir> [--json]  # artifact status plus fresh | stale | unstamped
     respec list [--json]                 # efforts grouped by repository, with staleness
     respec lint <change-dir> [--json]    # validate frontmatter, sections, status, and agent specs
-    respec agents [--filter S] [--all]   # reachable harnesses, effort levels, and models
+    respec agents [--filter S] [--all]   # external CLIs only; does not probe native workers
     respec agent-cmd <spec> [--prompt-file F]
-                                         # exact child command for <harness>[:<model>][@<effort>]
+                                         # external child command for <harness>[:<model>][@<effort>]
     respec format <path>... [--check]    # reflow prose; leave non-prose byte-identical
     respec templates list|eject          # inspect or customize skill templates
     respec install-hook                  # store pre-commit hook for Markdown formatting

@@ -23,30 +23,18 @@ type Rules struct {
 	Implement string `yaml:"implement"`
 }
 
-// Agents holds the operator's standing delegation preferences: which agent
-// plays each role when work is handed to a subagent.
+// Agents holds optional standing defaults consulted during planning, never
+// baked into installed skills. The operator chooses workers per effort and
+// the plan records the final choices, independent of later config changes.
 //
-// Every field is optional, and empty means "no preference stated" — the
-// harness then does whatever it is already configured to do. That default
-// matters: respec never picks a model on the operator's behalf, it only
-// records the one the operator asked for.
-//
-// Values are agent specs (`<harness>[:<model>][@<effort>]`), validated by
-// internal/agents. Preferences live here rather than in an effort directory
-// because a stance like "cheap models for mechanical work" stays true across
-// efforts and model releases. What changes is which models exist, and that is
-// probed with `respec agents` rather than stored.
+// Role fields are external CLI specs (`<harness>[:<model>][@<effort>]`),
+// validated by internal/agents. Notes may suggest native model or budget
+// preferences without selecting an external executor.
 type Agents struct {
 	Implementer string `yaml:"implementer"` // writes the code for a phase
 	Reviewer    string `yaml:"reviewer"`    // independently reviews the phase diff
 	Committer   string `yaml:"committer"`   // commits an accepted phase
 	Notes       string `yaml:"notes"`       // free prose: budget stance, models to avoid
-}
-
-// Stated reports whether the operator expressed any delegation preference at
-// all. When false, prompts fall back to harness-native behaviour.
-func (a Agents) Stated() bool {
-	return a.Implementer != "" || a.Reviewer != "" || a.Committer != "" || a.Notes != ""
 }
 
 // Config is the on-disk respec configuration.

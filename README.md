@@ -89,8 +89,13 @@ Every target installs the same four skills under its own skills directory:
 carry `disable-model-invocation: true`, so they load only when invoked
 explicitly (the phase skills read `respec` by path). The store path is baked in
 for every target. Re-running is idempotent; it overwrites the respec-owned
-files with a fresh render, so run it again after changing config, and it
-removes any retired respec skill file it no longer renders.
+files with a fresh render, so run it again after changing the store path,
+context, rules, or templates. It removes any retired respec skill file it no
+longer renders. Agent preferences are read during planning, not baked into
+skills, so changing them does not require reinstalling.
+
+Custom template overrides using `{{.Agents}}` must switch to planning-time
+selection. That field is no longer part of the install-time template context.
 
 ## Workflow
 
@@ -133,6 +138,7 @@ anywhere but the final phase is rejected, because it would stall an unattended r
 | --- | --- |
 | `respec config get\|set <key> [value]` | Read/write `~/.config/respec/config.yaml` |
 | `respec config path` | Print the config file path |
+| `respec config print` | Print effective configuration, including optional planning defaults |
 | `respec install --target <pi\|prime-agent\|claude\|codex>` | Render + install the respec skills at user scope for that agent |
 | `respec stamp <change-dir> [--repo <path>]` | Write provenance + `spec_sha256` into the artifacts, then reflow them |
 | `respec status <change-dir> [--json]` | Report `fresh` / `stale` / `unstamped` plus per-artifact status |
@@ -140,8 +146,8 @@ anywhere but the final phase is rejected, because it would stall an unattended r
 | `respec lint <change-dir> [--json]` | Validate frontmatter fields, `status` values, and required sections |
 | `respec format <path>... [--check]` | Reflow prose in files or every `*.md` under a dir; non-prose stays byte-identical |
 | `respec templates list\|eject [name]` | Inspect templates / copy embedded defaults into `templates_dir` |
-| `respec agents [--filter S] [--all] [--json]` | Probe this machine for delegation targets: installed harnesses, effort levels, reachable models |
-| `respec agent-cmd <spec> [--prompt-file F]` | Print the exact child command for `<harness>:<model>@<effort>` |
+| `respec agents [--filter S] [--all] [--json]` | Probe external agent CLIs, effort levels, and reachable models, not native workers |
+| `respec agent-cmd <spec> [--prompt-file F]` | Print the external CLI command for `<harness>:<model>@<effort>` |
 | `respec install-hook [--force]` | Install a store pre-commit hook that checks Markdown formatting |
 | `respec render [--out <dir>]` | Build the store as a Hugo site (default `<cache>/respec/site/public`) |
 | `respec serve [--port N] [--bind ADDR]` | Serve the store with live reload |
@@ -170,15 +176,43 @@ stale.
 
 ## Delegation
 
-**If you state nothing, nothing changes.** With no preferences configured,
-plans name no agents and each harness delegates exactly as it always has.
-Everything below is opt-in, and plans written before any of it existed keep
-working untouched.
+Skills use the current environment's native subagents by default. Native workers
+receive tasks through that environment's own tools, without Respec adding CLI
+launch commands or prompt files. If native workers are unavailable, the agent
+works in the current session and reports the limitation.
 
-### Stating a preference
+### Choose workers during planning
 
-Preferences are yours and durable, so they live in `config.yaml` rather than in
-an effort:
+For each effort, planning asks which worker preferences you want and records
+them in `plan.md`. Installed skills describe the process, not your model choices.
+For native workers, an optional section can look like this:
+
+```markdown
+## Worker preferences
+
+- Implementation: prefer <model> at medium effort
+- Review: prefer <model> at high effort
+- Commits: native defaults
+- Fallback: native defaults; report unavailable preferences
+```
+
+Put phase-specific overrides in that phase's prose. Implementation follows the
+plan's choices for every role, not live config; later config changes cannot
+restaff an approved effort. Amending a plan preserves its choices unless you
+change them. Omit the section when you state no preferences.
+
+A model, effort, or budget preference alone does not opt into external execution.
+Native hints apply only where the environment exposes the corresponding controls.
+With no preferences, the environment's defaults apply. Existing plans need no
+new fields or sections.
+
+### Optional standing defaults
+
+Planning can read `agents:` from `respec config print` and offer those values
+as defaults. You can accept or replace them for each effort. They are not
+assignments until recorded in the plan, and implementation does not reload them.
+The three role fields below suggest external CLIs; `notes` can suggest native
+model or budget preferences without selecting a CLI:
 
 ```yaml
 agents:
@@ -192,12 +226,22 @@ agents:
 respec config set agents.implementer 'pi:openai-codex/gpt-5.6-sol'
 ```
 
+### Choosing external executors
+
+An explicit external executor choice in the plan or current session opts that
+work into CLI delegation. Each role is independent: an external reviewer does
+not imply an external implementer. If an existing assignment conflicts with a
+request for native workers, the agent asks you to settle it.
+
 A spec is `<harness>[:<model>][@<effort>]`, where harness is `pi`,
 `prime-agent`, `claude`, or `codex`. **Model and effort are both optional** —
 `claude:opus`, `pi@high`, or bare `pi` all work, and whatever you leave out
 stays at the harness's own
 default rather than something respec chose. Specs are validated when you set
 them, so a bad effort level fails at the keyboard instead of mid-phase.
+
+Every harness name in a spec identifies an external CLI. In particular,
+`codex:...` selects `codex exec`, not an app-native Codex worker.
 
 The child harness is independent of the one running the orchestrator, so a
 Claude Code session can delegate a phase to gpt-5.6-sol through pi, and a pi
@@ -206,48 +250,49 @@ review independence: a phase implemented by one model family and reviewed by
 another is genuinely adversarial, rather than a model checking its own blind
 spots.
 
-### Preferences in, judgement out
-
-Your preferences are input. The plan records the **judgement** made in light of
-them, per phase, with the reasoning that produced it:
+For phases using an explicitly chosen external implementer, the plan records
+the assignment and its reasoning:
 
     ## Phase 2: Parse the roster
     **Agent:** pi:openai-codex/gpt-5.6-sol@medium — mechanical, cheap model is enough
 
-The reasoning is load-bearing. If that model is retired or unreachable when the
-plan finally runs, the implementer re-derives an equivalent from the intent
-instead of guessing.
+If that model is retired or unreachable when the plan runs, the implementer
+looks for an equivalent on the chosen executor and reports the substitution.
+Switching executors requires your approval. External reviewer and committer
+specs go in the corresponding role's prose under **Worker preferences**, with
+any phase-specific overrides in the phase.
 
 The roster itself is **discovered, never stored**. Installed harnesses and
 model catalogues drift, so a saved list would be wrong shortly after writing:
 
 ```sh
-respec agents                        # what this machine can reach right now
+respec agents                        # external CLIs this machine can reach
 respec agents --filter gpt-5.6       # narrow a large catalogue
 respec agent-cmd 'claude:opus@high'  # the exact child command
 ```
 
-Prompts never assemble child flags themselves. `respec agent-cmd` owns the
-per-harness details (nested-session guards, effort flag names, model syntax)
-and feeds the delegated prompt on **stdin**, so quotes and newlines in a phase
-task cannot break the command line.
+These commands do not discover or launch native workers. For external workers,
+`respec agent-cmd` builds the command with the correct per-CLI flags and stdin
+redirection. The orchestrator executes it with a private prompt file, then
+removes the file. Skills never assemble those flags themselves.
 
-`respec lint` never requires an `**Agent:**` line — absence means no preference
-was stated — but always validates the ones present, since a bad spec would
-otherwise surface only once a phase was already running.
+`respec lint` never requires an `**Agent:**` line. Absence leaves implementation
+with the environment's native mechanism; existing CLI assignments retain their
+meaning and validation.
 
 ### Adversarial review
 
 Each phase gets an independent read of its diff before the orchestrator judges
-it, from the `reviewer` agent where you named one and the harness's native
+it, from the reviewer recorded in the plan and the environment's native
 subagent otherwise. The reviewer receives the phase text and spec alongside the
 diff, and answers one narrow question: what does the diff do that the phase
 does not ask for, and what does the phase ask for that it does not do?
 
 Its findings are claims, not verdicts. Prompted to find problems a model will
 find them, including invented ones, so the orchestrator adjudicates and says
-which it kept. A missing or unreachable reviewer degrades review quality but
-never produces wrong output, so it never halts a run.
+which it kept. If a reviewer is unavailable, the orchestrator follows the
+plan's fallback. Without a stricter fallback, it reviews the diff itself and
+reports that no independent reviewer was used.
 
 `respec format` reflows paragraph prose only — tables, fenced code, headings,
 inline HTML, and bare URLs are left byte-identical, and inline code / links /
@@ -287,7 +332,7 @@ rules:                  # optional per-artifact rules injected into the matching
   spec: ""
   plan: ""
   implement: ""
-agents:                 # optional delegation preferences; empty = harness defaults
+agents:                 # optional defaults offered during planning, not assignments
   implementer: ""       # <harness>[:<model>][@<effort>], e.g. pi:openai-codex/gpt-5.6-sol
   reviewer: ""          # e.g. claude:opus
   committer: ""         # e.g. pi:openai-codex/gpt-5.4-mini
@@ -297,7 +342,8 @@ agents:                 # optional delegation preferences; empty = harness defau
 Keys are addressed with dots on the CLI, e.g.
 `respec config set rules.plan "..."` or
 `respec config set agents.reviewer 'claude:opus'`. The three agent keys are
-validated on write; `notes` is free prose.
+validated on write; `notes` is free prose. These are optional planning inputs;
+set effort-specific worker choices in `plan.md`, not config.
 
 ## End-to-end walkthrough
 

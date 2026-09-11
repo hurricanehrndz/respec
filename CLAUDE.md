@@ -18,22 +18,41 @@ Concretely:
   prose.
 - New features should ask first: "can the CLI do this?" Only what genuinely
   requires judgment goes into the skill templates.
-- `respec agents` probes delegation targets and `respec agent-cmd` builds the
-  child command line. Skills must never assemble harness flags themselves —
-  nested-session guards, effort flag names, and model syntax are per-harness
-  details that belong in `internal/agents`.
+- For explicitly chosen external executors, `respec agents` probes CLIs and
+  `respec agent-cmd` builds the child command line. Skills must never assemble
+  harness flags themselves. Those details belong in `internal/agents`.
+
+### Delegation: native by default
+
+Skills use the current environment's native subagent mechanism unless the
+operator explicitly selects an external executor in the plan or session.
+Model, effort, and budget preferences alone do not select a CLI; a choice for
+one role does not select executors for other roles. Native worker preferences
+belong in plan prose, without an `**Agent:**` line.
+
+`respec agents` cannot discover app-native workers, and `respec agent-cmd`
+cannot launch them. Even a `codex` spec means the external CLI, not an
+app-native worker. Keep CLI discovery, flags, and prompt files confined to
+external delegation. Existing CLI assignments keep their meaning; ask the
+operator to settle any conflict with a request for native workers.
 
 ### Delegation: three layers, split by lifetime
 
-- **Preferences** — durable and operator-owned, so they live in `config.yaml`
-  under `agents:`. A stance like "cheap models for mechanical work" stays true
-  across efforts and model releases.
-- **Roster** — volatile, so it is never stored. `respec agents` probes at the
-  moment the operator asks; a saved list is wrong shortly after writing and
-  fails at the worst moment, mid-phase and unattended.
-- **Judgement** — per effort, recorded in `plan.md` as `**Agent:** <spec> —
-  <why>`. Preferences are the input; the plan is where the decision lands,
-  which is the same split every other respec artifact draws.
+- **Standing defaults** live under `agents:` in `config.yaml`. Planning can
+  read them through `respec config print` and offer them to the operator.
+  Never bake them into installed skills or treat them as effort assignments.
+- **Roster** — volatile, so it is never stored. `respec agents` probes external
+  CLIs at the moment the operator asks; the current environment manages native
+  worker availability.
+- **Worker choices** belong to each effort. Planning settles them with the
+  operator and records implementation, review, commit, and fallback preferences
+  in `plan.md` under an optional **Worker preferences** section. Phase prose
+  overrides plan-wide choices for that role. External implementers still use
+  per-phase `**Agent:** <spec> — <why>` lines; native hints stay in prose.
+
+Implementation follows the plan, never live agent config. Replanning preserves
+recorded choices unless the operator changes them. Go templates handle
+install-time settings and target syntax, not per-effort model choices.
 
 Two invariants follow. Plans record a spec, never a validated catalogue entry:
 `internal/agents` checks the harness and effort level, which are stable, and

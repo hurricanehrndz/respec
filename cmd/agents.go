@@ -21,11 +21,11 @@ func init() {
 	var all bool
 	cmd := &cobra.Command{
 		Use:   "agents",
-		Short: "Probe this machine for delegation targets (harnesses, models, effort levels)",
-		Long: "Report which agent harnesses are installed here, which models each can reach, and\n" +
-			"which reasoning levels it accepts. This is the investigation the plan phase runs\n" +
-			"before proposing a per-phase delegation matrix: the roster is probed, never stored,\n" +
-			"because installed tooling and model catalogues drift out from under a config file.",
+		Short: "Probe external agent CLIs, models, and effort levels",
+		Long: "Report which external agent CLIs are installed here, which models each can reach,\n" +
+			"and which reasoning levels it accepts. Use this after choosing external CLI\n" +
+			"delegation. Native subagents are not probed; their availability is managed by\n" +
+			"the current app or agent environment. The CLI roster is probed, never stored.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			found := agents.Detect(c.Context())
@@ -83,7 +83,7 @@ func init() {
 				}
 			}
 			if !any {
-				_, _ = fmt.Fprintln(out, "\nNo delegation harness found on PATH; phases run in the orchestrator session.")
+				_, _ = fmt.Fprintln(out, "\nNo external agent CLI found on PATH. Native subagents are not probed.")
 			}
 			return nil
 		},

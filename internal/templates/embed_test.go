@@ -303,34 +303,108 @@ func TestImplementWorksOnAnEffortBranch(t *testing.T) {
 	}
 }
 
-// Absent preferences must not produce invented staffing.
-func TestPlanTellsAgentToInventNothingWithoutPreferences(t *testing.T) {
-	cfg := config.Defaults()
-	cfg.Store = "/tmp/s"
+// The plan passes effort-specific choices between sessions. Later config
+// changes must not silently restaff an approved effort.
+func TestWorkerPreferencesAreChosenDuringPlanning(t *testing.T) {
+	for _, target := range []Target{TargetPi, TargetPrimeAgent, TargetClaude, TargetCodex} {
+		t.Run(target.Name, func(t *testing.T) {
+			r, err := Render(config.Defaults(), target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for key, required := range map[string][]string{
+				"rsx-plan/SKILL.md": {
+					"Ask the operator which worker preferences they want for this effort",
+					"respec config print",
+					"Treat config as optional defaults, not assignments",
+					"Preserve an existing plan's worker choices unless the operator changes them",
+					"Record the chosen implementer, reviewer, committer, and fallback",
+					"## Worker preferences",
+					"do not invent any",
+				},
+				"rsx-implement/SKILL.md": {
+					"Use the worker preferences recorded in `plan.md`",
+					"Phase-specific choices override the plan-wide choices for that role",
+					"Do not reload standing agent preferences from config",
+					"Apply the plan's reviewer choice",
+					"Apply the plan's committer choice",
+				},
+			} {
+				got := strings.Join(strings.Fields(r.Skills[key]), " ")
+				for _, want := range required {
+					if !strings.Contains(got, want) {
+						t.Errorf("%s must cover %q", key, want)
+					}
+				}
+			}
+		})
+	}
+}
 
-	bare, err := Render(cfg, TargetPi)
-	if err != nil {
-		t.Fatalf("Render without preferences: %v", err)
-	}
-	if !strings.Contains(bare.Skills["rsx-plan/SKILL.md"], "do not invent any") {
-		t.Error("with no preferences, plan skill must tell the agent not to invent staffing")
-	}
-
-	cfg.Agents = config.Agents{
-		Implementer: "pi:openai-codex/gpt-5.6-sol@medium",
-		Reviewer:    "claude:opus",
-	}
-	stated, err := Render(cfg, TargetPi)
-	if err != nil {
-		t.Fatalf("Render with preferences: %v", err)
-	}
-	for _, want := range []string{"pi:openai-codex/gpt-5.6-sol@medium", "claude:opus"} {
-		if !strings.Contains(stated.Skills["rsx-plan/SKILL.md"], want) {
-			t.Errorf("stated preference %q missing from plan skill", want)
+// A budget note or a reviewer choice must not route native implementation
+// through an external CLI. The same boundary applies to every install target.
+func TestDelegationRequiresExplicitExternalExecutor(t *testing.T) {
+	for _, target := range []Target{TargetPi, TargetPrimeAgent, TargetClaude, TargetCodex} {
+		baseline, err := Render(config.Defaults(), target)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
-	if strings.Contains(stated.Skills["rsx-plan/SKILL.md"], "do not invent any") {
-		t.Error("with preferences stated, the no-preferences branch must not render")
+		for name, prefs := range map[string]config.Agents{
+			"defaults":             {},
+			"notes-only":           {Notes: "Use a cheap model at medium effort"},
+			"reviewer-only":        {Reviewer: "claude:opus"},
+			"external-implementer": {Implementer: "prime-agent:openai/gpt-5.6-sol@medium"},
+			"committer-only":       {Committer: "pi:provider/commit-model@low"},
+		} {
+			t.Run(target.Name+"/"+name, func(t *testing.T) {
+				cfg := config.Defaults()
+				cfg.Agents = prefs
+				r, err := Render(cfg, target)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for key, required := range map[string][]string{
+					"respec/SKILL.md": {
+						"Use the current environment's native subagent mechanism by default",
+						"Model, effort, and cost preferences alone do not authorize an external CLI",
+						"A choice for one role does not opt other roles into external execution",
+						"If native subagents are unavailable, work in the current session and report the limitation",
+					},
+					"rsx-plan/SKILL.md": {
+						"For native workers, omit `**Agent:**`",
+						"Only for an explicit external executor choice, probe",
+					},
+					"rsx-implement/SKILL.md": {
+						"Without an `**Agent:**` line, use native subagents",
+						"Otherwise use a native committer or commit in the current session",
+					},
+				} {
+					got := strings.Join(strings.Fields(r.Skills[key]), " ")
+					for _, want := range required {
+						if !strings.Contains(got, want) {
+							t.Errorf("%s must preserve delegation boundary %q", key, want)
+						}
+					}
+				}
+				shared := r.Skills["respec/SKILL.md"]
+				native, external, ok := strings.Cut(shared, "### External CLI delegation")
+				if !ok || strings.Contains(native, "--prompt-file") || !strings.Contains(external, "--prompt-file") {
+					t.Error("prompt-file instructions must be scoped to external CLI delegation")
+				}
+				impl := r.Skills["rsx-implement/SKILL.md"]
+				if strings.Contains(impl, "temporary file") || strings.Contains(impl, "respec agent-cmd") {
+					t.Error("implementation must use the shared external CLI policy, not unconditional shell plumbing")
+				}
+				if len(r.Skills) != len(baseline.Skills) {
+					t.Fatal("agent preferences changed the installed skill set")
+				}
+				for key, content := range baseline.Skills {
+					if r.Skills[key] != content {
+						t.Errorf("%s bakes standing agent preferences into an installed skill", key)
+					}
+				}
+			})
+		}
 	}
 }
 

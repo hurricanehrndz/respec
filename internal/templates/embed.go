@@ -78,12 +78,12 @@ func (t Target) SkillPath() string {
 	return "~/.pi/agent/skills/respec/SKILL.md"
 }
 
-// RenderData is the template context substituted into each asset.
+// RenderData is the install-time context. Worker preferences are read during
+// planning and recorded in the effort's plan, not baked into skills.
 type RenderData struct {
 	Store   string
 	Context string
 	Rules   config.Rules
-	Agents  config.Agents
 	Target
 }
 
@@ -190,7 +190,6 @@ func Render(cfg config.Config, target Target) (Rendered, error) {
 		Store:   cfg.StorePath(),
 		Context: cfg.Context,
 		Rules:   cfg.Rules,
-		Agents:  cfg.Agents,
 		Target:  target,
 	}
 	out := Rendered{Skills: map[string]string{}}
