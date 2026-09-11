@@ -9,7 +9,7 @@ import (
 
 // version is the respec release version, managed by `go tool versionbump`
 // (see versionbump.yaml).
-const version = "0.4.0"
+const version = "0.5.0"
 
 var rootCmd = &cobra.Command{
 	Use:     "respec",
