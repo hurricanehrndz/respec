@@ -119,8 +119,8 @@ deliberately deviates). Consult them when iterating on
 
 ## Development
 
-- `just build` / `just test` / `just lint` (devenv shell provides go, hugo,
-  just, golangci-lint).
+- `just build` / `just test` / `just lint` (mise provides go, hugo, just,
+  and golangci-lint).
 - errcheck is enforced: check or explicitly discard every error return.
 - Test git fixtures must disable commit signing (`-c commit.gpgsign=false`)
   for hermeticity.

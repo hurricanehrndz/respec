@@ -41,32 +41,14 @@ Optional, for the best experience:
   formatting (a standalone `respec install-hook` alternative needs nothing
   extra).
 
-On Nix, a [devenv](https://devenv.sh) shell can provide all of it. An example
-`devenv.nix` for the store repo, which also wires the `respec format --check`
-guard as a pre-commit hook (devenv generates `.pre-commit-config.yaml`; the
-hooks block additionally needs
-`devenv inputs add git-hooks github:cachix/git-hooks.nix --follows nixpkgs`):
+[mise](https://mise.jdx.dev) can install Go and Hugo for a store repo:
 
-```nix
-{ pkgs, ... }:
-
-{
-  packages = with pkgs; [
-    git
-    hugo # respec render / serve
-  ];
-
-  # for `go install github.com/hurricanehrndz/respec@latest`
-  languages.go.enable = true;
-
-  git-hooks.hooks.respec-format = {
-    enable = true;
-    name = "respec format --check";
-    entry = "respec format --check";
-    types = [ "markdown" ];
-  };
-}
+```sh
+mise use go@latest hugo@latest
 ```
+
+Use `respec install-hook` or the published pre-commit hooks to check store
+formatting.
 
 ### Install
 
@@ -378,7 +360,7 @@ respec serve                              # http://127.0.0.1:1313
 ## Development
 
 ```sh
-devenv shell    # provides go, hugo, just, golangci-lint
+mise install    # installs the versions pinned in mise.toml
 just build      # binary → build/respec
 just test       # go vet + go test
 just lint       # golangci-lint
