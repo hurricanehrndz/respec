@@ -1,6 +1,6 @@
 // Package config loads and saves respec configuration from
-// ~/.config/respec/config.yaml. All paths support ~ expansion and sane
-// defaults are applied when keys are missing.
+// ~/.config/respec/config.yaml. All paths support environment variable and ~
+// expansion, and sane defaults are applied when keys are missing.
 package config
 
 import (
@@ -64,8 +64,9 @@ func Path() (string, error) {
 	return filepath.Join(home, ".config", "respec", "config.yaml"), nil
 }
 
-// Expand expands a leading ~ in a path to the user's home directory.
+// Expand expands environment variables and a leading ~ in a path.
 func Expand(path string) string {
+	path = os.ExpandEnv(path)
 	if path == "~" {
 		if home, err := os.UserHomeDir(); err == nil {
 			return home

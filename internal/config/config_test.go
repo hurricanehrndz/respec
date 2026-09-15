@@ -62,11 +62,14 @@ func TestSaveCreatesFile(t *testing.T) {
 
 func TestExpand(t *testing.T) {
 	home := withTempHome(t)
+	t.Setenv("RESPEC_ROOT", filepath.Join(home, "custom-root"))
 	cases := map[string]string{
-		"~/respec-store": filepath.Join(home, "respec-store"),
-		"~":              home,
-		"/abs/path":      "/abs/path",
-		"relative":       "relative",
+		"~/respec-store":           filepath.Join(home, "respec-store"),
+		"~":                        home,
+		"$HOME/respec-store":       filepath.Join(home, "respec-store"),
+		"${RESPEC_ROOT}/templates": filepath.Join(home, "custom-root", "templates"),
+		"/abs/path":                "/abs/path",
+		"relative":                 "relative",
 	}
 	for in, want := range cases {
 		if got := Expand(in); got != want {

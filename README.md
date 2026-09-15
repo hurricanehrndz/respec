@@ -321,7 +321,8 @@ agents:                 # optional defaults offered during planning, not assignm
   notes: ""             # free prose: budget stance, models to avoid
 ```
 
-Keys are addressed with dots on the CLI, e.g.
+Path values (`store` and `templates_dir`) expand a leading `~`, `$VAR`, and
+`${VAR}` when used. Keys are addressed with dots on the CLI, e.g.
 `respec config set rules.plan "..."` or
 `respec config set agents.reviewer 'claude:opus'`. The three agent keys are
 validated on write; `notes` is free prose. These are optional planning inputs;
