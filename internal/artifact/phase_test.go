@@ -170,3 +170,17 @@ func containsSubstr(problems []string, want string) bool {
 	}
 	return false
 }
+
+// The plan skill writes `**Agent:** <spec> — <why>` so an implementer can find
+// an equivalent model if the named one is gone. The reason is prose for that
+// reader, not part of the spec, and must not make lint reject the plan.
+func TestAgentLineReasonIsNotPartOfTheSpec(t *testing.T) {
+	body := "## Overview\no\n\n## Phase 1: Cheap\n**Agent:** pi:openai-codex/gpt-5.6-sol@medium — operator chose pi; mechanical work\n"
+	pl := planWithBody("manual", body)
+	if got := pl.Phases()[0].Agent; got != "pi:openai-codex/gpt-5.6-sol@medium" {
+		t.Errorf("agent spec: %q", got)
+	}
+	if got := pl.Validate(); containsSubstr(got, "agent spec") {
+		t.Errorf("documented Agent line should lint clean, got %v", got)
+	}
+}

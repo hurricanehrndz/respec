@@ -12,7 +12,11 @@ import (
 // agentLinePrefix marks a phase's delegation assignment in plan.md:
 //
 //	## Phase 2: Parse the roster
-//	**Agent:** pi:openai-codex/gpt-5.6-sol@medium
+//	**Agent:** pi:openai-codex/gpt-5.6-sol@medium — mechanical work
+//
+// A spec never contains whitespace, so the first field is the spec and the
+// rest is the planner's reason, kept for a human or an implementer looking
+// for an equivalent model.
 //
 // The assignment lives in the body rather than frontmatter because it belongs
 // to one phase, and phases are body sections; keying frontmatter by phase
@@ -58,7 +62,9 @@ func (pl Plan) Phases() []Phase {
 		}
 
 		if strings.HasPrefix(line, agentLinePrefix) && out[cur].Agent == "" {
-			out[cur].Agent = strings.TrimSpace(strings.TrimPrefix(line, agentLinePrefix))
+			if f := strings.Fields(strings.TrimPrefix(line, agentLinePrefix)); len(f) > 0 {
+				out[cur].Agent = f[0]
+			}
 			continue
 		}
 		if i := strings.Index(line, operatorMarker); i >= 0 && strings.HasPrefix(line, "-") {
