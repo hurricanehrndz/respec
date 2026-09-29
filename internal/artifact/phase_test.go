@@ -8,7 +8,7 @@ import (
 func planWithBody(mode, body string) Plan {
 	return Plan{
 		Title:         "T",
-		Status:        "approved",
+		Status:        "draft",
 		SpecSHA:       "abc",
 		ExecutionMode: mode,
 		body:          []byte(body),
@@ -182,5 +182,16 @@ func TestAgentLineReasonIsNotPartOfTheSpec(t *testing.T) {
 	}
 	if got := pl.Validate(); containsSubstr(got, "agent spec") {
 		t.Errorf("documented Agent line should lint clean, got %v", got)
+	}
+}
+
+// Nothing ever set or gated on a plan status of approved: planning leaves a
+// plan draft and implementation moves it to in-progress. An unused value only
+// invites a gate that nobody enforces, so lint rejects it.
+func TestPlanRejectsApprovedStatus(t *testing.T) {
+	pl := planWithBody("manual", twoPhases)
+	pl.Status = "approved"
+	if got := pl.Validate(); !containsSubstr(got, `invalid status "approved"`) {
+		t.Errorf("expected approved to be rejected, got %v", got)
 	}
 }

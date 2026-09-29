@@ -40,7 +40,7 @@ Write the human fields. `respec stamp` fills the deterministic fields.
 | --- | --- | --- |
 | research.md | `topic`, `status` (`draft` or `complete`), optional `tags` | `date`, `repo`, `repo_path`, `git_commit` (write-once) |
 | spec.md | `title`, `status` (`draft` or `approved`), optional `tags` | `date` (write-once) |
-| plan.md | `title`, `status` (`draft`, `approved`, `in-progress`, or `done`), `execution_mode` (`manual` or `auto`), optional `depends_on` | `spec_sha256` (refreshed) |
+| plan.md | `title`, `status` (`draft`, `in-progress`, or `done`), `execution_mode` (`manual` or `auto`), optional `depends_on` | `spec_sha256` (refreshed) |
 
 A `depends_on` value is a bare slug for an effort in the same repository or `repo/slug` for a
 cross-repository dependency. `respec lint <change-dir>` validates frontmatter, status values, and

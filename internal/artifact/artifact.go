@@ -32,7 +32,7 @@ const StatusDone = "done"
 var (
 	researchStatuses = []string{"draft", "complete"}
 	specStatuses     = []string{"draft", "approved"}
-	planStatuses     = []string{"draft", "approved", "in-progress", StatusDone}
+	planStatuses     = []string{"draft", "in-progress", StatusDone}
 	executionModes   = []string{"manual", "auto"}
 )
 
