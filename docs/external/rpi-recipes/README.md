@@ -20,7 +20,10 @@ scale-directed exploration instead of RPI's mandatory parallel sub-recipe
 fan-out (default is in the open within the dedicated research session,
 because the artifact is the context handoff and mid-session subagents cost
 the operator observability and steerability during the live exploration;
-fan-out only when codebase size makes bulk reading drown the session) —
+fan-out only when codebase size makes bulk reading drown the session;
+plans that fix outcomes, contracts, and constraints rather than RPI's exact
+per-file edits, because code moves between planning and implementation and
+capable implementers choose local design better against the live code) —
 the reasoning lives in the repo history and CLAUDE.md.
 
 Consult these when iterating on the prompt templates; do not edit them.

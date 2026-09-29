@@ -77,6 +77,8 @@ Tell the implementer to:
 
 - read the named plan and spec, then implement only the current phase in the worked-on repository;
 - follow repository instructions and make the smallest complete change;
+- treat the plan's file references as starting points and choose the local design against the
+  current code, but stop and report rather than break a phase contract or requirement;
 - run focused checks while working;
 - not commit or edit respec artifacts;
 - report changed files, checks, and deviations.
@@ -98,7 +100,8 @@ Give the reviewer the phase text, spec, and diff. Ask one narrow question:
 > diff does not do?
 
 Treat findings as claims, not verdicts. Verify each claim against the plan, research decisions, and
-code. Apply real findings, discard noise, and report both decisions. Prefer a reviewer from a
+code. A local approach that differs from the plan's starting points but meets the phase contract is
+not a finding. Apply real findings, discard noise, and report both decisions. Prefer a reviewer from a
 different model family when the chosen mechanism supports it.
 
 ### 3. Orchestrator gate
@@ -136,7 +139,13 @@ continue.
 
 ## When the plan and reality disagree
 
-Do not improvise around a missing file, symbol, command, behavior, or agent. Stop and report:
+The plan fixes outcomes, contracts, and constraints, not individual edits. When the code differs
+from the plan's starting points, adapt within the phase. A renamed symbol, a moved file, or a
+simpler local approach is a deviation to report, not a reason to stop.
+
+Stop when continuing would break a requirement, a contract another phase or caller relies on, a
+research decision, or the scope. Also stop when a verification command or assigned agent is
+missing. Report:
 
     Issue in Phase <N>:
     Expected: <what the plan says>

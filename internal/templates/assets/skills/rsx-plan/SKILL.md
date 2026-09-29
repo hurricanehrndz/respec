@@ -90,6 +90,13 @@ behavior feedback changes `spec.md` first. Approach-only feedback changes `plan.
 means the spec changed, so amend the plan to match. Preserve `execution_mode` unless the operator
 explicitly changes it. After any edit, make sure a runnable end-to-end path remains.
 
+Write `spec.md` for a human reviewer first. Someone who has not read the research should understand
+from the spec alone what problem this solves, what changes for users or callers, and how they will
+know it is done. Describe observable behavior, such as commands, output, errors, and file formats.
+Implementation detail like file names, functions, and phase structure belongs in `plan.md`. Define
+project terms on first use. Make each requirement one testable statement. Follow the shared
+writing rules.
+
 Use this `spec.md` body:
 
     # <title>
@@ -111,7 +118,7 @@ Use this `plan.md` body:
     <what we are implementing, the chosen approach, and why>
 
     ## Current State
-    <what exists now, key file:line discoveries, and constraints>
+    <what exists now, key file:line starting points, and constraints>
 
     ## Desired End State
     <the target and how we will know it is complete>
@@ -128,7 +135,7 @@ Use this `plan.md` body:
 
     ## Phase 1: <name>
     **Agent:** <spec> — <why this one>   <!-- external implementers only; omit for native workers -->
-    <files to change and the exact changes>
+    <outcome this phase delivers, contracts later phases rely on, binding constraints, starting points>
 
     ### Automated Verification
     - [ ] tests pass: `<command>`
@@ -150,8 +157,16 @@ boundary, not only unit tests.
 `respec lint` requires **Requirements** in the spec and **Overview**, at least one **Phase**,
 **Automated Verification**, and **Manual Verification** in the plan. Keep those headings verbatim.
 
-Implementation should be mechanical. If the implementing session must invent design, add the
-missing decisions and detail now.
+Plan outcomes, not edits. For each phase, state what it delivers, which contracts later phases or
+callers depend on (interfaces, schemas, flags, output formats), which research decisions and
+constraints bind it, and how to verify it. Name files and symbols as starting points, not as a
+change list. The implementer chooses the local design, meaning the specific edits, helpers, and
+internal structure, against the code as it stands then. Code moves between planning and
+implementation, and a plan that scripts every edit breaks on the first rename.
+
+Settle now every decision that crosses a phase boundary, changes user-visible behavior, or would be
+expensive to undo. The implementer must not have to invent those. Add more detail to a phase
+staffed with a cheaper or weaker implementer.
 
 Stamp, lint, and fix every finding:
 

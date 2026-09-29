@@ -122,10 +122,30 @@ This is one-directional because the plan must track the current spec.
   in the central store.
 - Never compute dates, git provenance, or hashes by hand. Run `respec stamp`.
 - Never build on a silent assumption. Verify it, ask the operator, or record an open question.
-- Treat the plan as the source of truth during implementation.
+- Treat the plan's outcomes, contracts, and constraints as the source of truth during
+  implementation. Its file and symbol references are starting points.
 - Keep `spec.md` and `plan.md` consistent. Re-stamp after every spec change.
 - Every plan needs the highest practical end-to-end feedback loop. An auto plan requires a
   runnable E2E, integration, or smoke command and identifies its prerequisites during planning.
+
+## Writing for the reader
+
+People review these artifacts before agents act on them. Write prose a busy engineer can read once
+and trust.
+
+- Say what the thing does. Name the mechanism, command, or number instead of the feeling. If a
+  sentence could appear unchanged in another project's docs, cut it.
+- Write one idea per sentence. Split any sentence the reader has to parse twice.
+- Use active voice and name the actor: "`respec lint` rejects the plan", not "the plan is
+  rejected".
+- Pick one term for each concept, define it on first use, and keep using it. Changing synonyms
+  makes a reader wonder if you mean two different things.
+- Prefer plain words: "use" over "leverage" or "utilize", "is" over "serves as", "if" over "in the
+  event that". Avoid filler ("it is important to note"), stacked hedges, and puffery ("robust",
+  "seamless", "crucial", "pivotal").
+- Use periods and commas instead of em dashes. Use sentence-case headings. Don't write bold
+  "**Label:** restated line" bullets or force points into groups of three.
+- Make a recommendation when you have one, and give the reason.
 {{if .Context}}
 ## Shared context
 

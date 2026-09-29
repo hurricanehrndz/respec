@@ -422,3 +422,34 @@ func TestSkillsAreUserInvoked(t *testing.T) {
 		}
 	}
 }
+
+// Plans fix outcomes and contracts, not edits: code moves between planning
+// and implementation, and a plan that scripts every edit stalls an unattended
+// run on the first rename. The spec is for a human reviewer, so its audience
+// guidance and the shared writing rules must survive template edits.
+func TestPlanFixesOutcomesAndSpecTargetsHumans(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Store = "/tmp/s"
+	r, err := Render(cfg, TargetPi)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	for skill, wants := range map[string][]string{
+		"rsx-plan/SKILL.md":      {"Plan outcomes, not edits", "human reviewer first"},
+		"rsx-implement/SKILL.md": {"adapt within the phase"},
+		"respec/SKILL.md":        {"Writing for the reader"},
+	} {
+		for _, want := range wants {
+			if !strings.Contains(r.Skills[skill], want) {
+				t.Errorf("%s should contain %q", skill, want)
+			}
+		}
+	}
+	for _, rigid := range []string{"exact changes", "Implementation should be mechanical", "Do not improvise"} {
+		for skill, content := range r.Skills {
+			if strings.Contains(content, rigid) {
+				t.Errorf("%s reintroduces rigid planning prose %q", skill, rigid)
+			}
+		}
+	}
+}
