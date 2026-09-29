@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,8 +14,8 @@ func runInstall(t *testing.T, target string) string {
 	t.Setenv("HOME", home)
 	t.Setenv("CODEX_HOME", "") // an inherited CODEX_HOME would install outside the temp HOME
 	rootCmd.SetArgs([]string{"install", "--target", target})
-	rootCmd.SetOut(os.NewFile(0, os.DevNull))
-	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	rootCmd.SetOut(io.Discard)
+	rootCmd.SetErr(io.Discard)
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("install --target %s: %v", target, err)
 	}
@@ -123,8 +124,8 @@ func TestInstallCodexHonorsCodexHome(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("CODEX_HOME", codexHome)
 	rootCmd.SetArgs([]string{"install", "--target", "codex"})
-	rootCmd.SetOut(os.NewFile(0, os.DevNull))
-	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	rootCmd.SetOut(io.Discard)
+	rootCmd.SetErr(io.Discard)
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("install --target codex: %v", err)
 	}
@@ -137,8 +138,8 @@ func TestInstallRejectsUnknownTarget(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	rootCmd.SetArgs([]string{"install", "--target", "emacs"})
-	rootCmd.SetOut(os.NewFile(0, os.DevNull))
-	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	rootCmd.SetOut(io.Discard)
+	rootCmd.SetErr(io.Discard)
 	err := rootCmd.Execute()
 	if err == nil {
 		t.Fatal("expected error for unknown --target")
@@ -169,8 +170,8 @@ func TestInstallPrunesRetiredSkillFiles(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"install", "--target", "pi"})
-	rootCmd.SetOut(os.NewFile(0, os.DevNull))
-	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	rootCmd.SetOut(io.Discard)
+	rootCmd.SetErr(io.Discard)
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("install: %v", err)
 	}
@@ -200,8 +201,8 @@ func TestInstallIsIdempotent(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"install", "--target", "pi"})
-	rootCmd.SetOut(os.NewFile(0, os.DevNull))
-	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	rootCmd.SetOut(io.Discard)
+	rootCmd.SetErr(io.Discard)
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("second install: %v", err)
 	}
@@ -236,8 +237,8 @@ func TestInstallPrunesRetiredPrompts(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"install", "--target", "pi"})
-	rootCmd.SetOut(os.NewFile(0, os.DevNull))
-	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	rootCmd.SetOut(io.Discard)
+	rootCmd.SetErr(io.Discard)
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("install: %v", err)
 	}
@@ -267,8 +268,8 @@ func TestInstallRemovesEmptiedPromptDir(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"install", "--target", "pi"})
-	rootCmd.SetOut(os.NewFile(0, os.DevNull))
-	rootCmd.SetErr(os.NewFile(0, os.DevNull))
+	rootCmd.SetOut(io.Discard)
+	rootCmd.SetErr(io.Discard)
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("install: %v", err)
 	}
