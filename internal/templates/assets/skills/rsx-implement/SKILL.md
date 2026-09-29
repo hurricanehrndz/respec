@@ -35,8 +35,9 @@ looped in, not how the work is performed.
 - In `auto` mode, continue through all phases. Pause only for a blocker or final consolidated
   acceptance. An auto plan may have `Operator:` checks only in its final phase.
 
-Both modes stop when reality contradicts the plan, scope must change, access is missing, the dirty
-working tree is unsafe, or an action needs confirmation because it has high impact.
+Both modes stop under the conditions in **When the plan and reality disagree**, when scope must
+change, when access is missing, when the dirty working tree is unsafe, or when an action needs
+confirmation because it has high impact.
 
 ## Prepare the repository
 
@@ -94,15 +95,16 @@ under the shared delegation policy. Otherwise use a native child. If no reviewer
 follow the plan's fallback; absent a stricter fallback, review it yourself and report that no
 independent reviewer was used.
 
-Give the reviewer the phase text, spec, and diff. Ask one narrow question:
+Give the reviewer the phase text, spec, and diff. Tell it the phase's file and symbol references are
+starting points, so it judges the diff against the phase's outcome, contracts, and constraints. Ask
+one narrow question:
 
 > What does this diff do that the phase does not ask for, and what does the phase ask for that the
 > diff does not do?
 
 Treat findings as claims, not verdicts. Verify each claim against the plan, research decisions, and
 code. A local approach that differs from the plan's starting points but meets the phase contract is
-not a finding. Apply real findings, discard noise, and report both decisions. Prefer a reviewer from a
-different model family when the chosen mechanism supports it.
+not a finding. Apply real findings, discard noise, and report both decisions.
 
 ### 3. Orchestrator gate
 

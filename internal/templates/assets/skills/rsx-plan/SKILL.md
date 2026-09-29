@@ -35,8 +35,6 @@ The work is otherwise the same in both modes.
 Close every gap before choosing an approach. Ask only what inspection cannot answer. If the
 operator corrects your understanding, verify the correction against the code before using it. The
 finished plan has no unresolved questions.
-Delegate broad sweeps such as caller audits and package-wide pattern surveys under the shared
-policy. Keep design judgment and operator conversation in this session.
 
 Find the highest meaningful end-to-end feedback loop available: an E2E or integration suite, CLI
 smoke test, rendered output, or real request through the public boundary. Ask early whether it
@@ -151,8 +149,6 @@ Use this `plan.md` body:
 **Automated Verification** contains deterministic commands. **Manual Verification** contains work
 that needs judgment, not necessarily a person. The orchestrator performs every feasible manual
 item. Reserve `Operator:` for checks an agent cannot perform because each one stops the workflow.
-Every plan needs a runnable end-to-end, integration, or smoke loop at the highest practical
-boundary, not only unit tests.
 
 `respec lint` requires **Requirements** in the spec and **Overview**, at least one **Phase**,
 **Automated Verification**, and **Manual Verification** in the plan. Keep those headings verbatim.
@@ -165,8 +161,9 @@ internal structure, against the code as it stands then. Code moves between plann
 implementation, and a plan that scripts every edit breaks on the first rename.
 
 Settle now every decision that crosses a phase boundary, changes user-visible behavior, or would be
-expensive to undo. The implementer must not have to invent those. Add more detail to a phase
-staffed with a cheaper or weaker implementer.
+expensive to undo. The implementer must not have to invent those. For a phase staffed with a
+cheaper or weaker implementer, settle more decisions and name more starting points, but still
+describe outcomes, not edits.
 
 Stamp, lint, and fix every finding:
 

@@ -115,7 +115,8 @@ This is one-directional because the plan must track the current spec.
 
 ## Hard rules
 
-- Run each phase in a fresh session. The artifacts pass context between phases.
+- Run research, planning, and implementation in separate fresh sessions. The artifacts pass
+  context between them.
 - Write artifacts for a human co-engineer. Use Mermaid diagrams or inline HTML when they explain
   structure better than prose. GitHub and `respec render`/`serve` render both.
 - Never write `research.md`, `spec.md`, or `plan.md` into the worked-on repository. They belong only
@@ -146,6 +147,10 @@ and trust.
 - Use periods and commas instead of em dashes. Use sentence-case headings. Don't write bold
   "**Label:** restated line" bullets or force points into groups of three.
 - Make a recommendation when you have one, and give the reason.
+
+These rules apply to prose. Keep the structured lines that `respec lint` reads, such as
+`**Agent:**` lines, `Operator:` checks, and verification checkboxes, in the exact format the
+skeletons show.
 {{if .Context}}
 ## Shared context
 
