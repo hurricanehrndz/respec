@@ -1,6 +1,6 @@
 ---
 name: rsx-implement
-description: "Implement an approved respec plan: staleness gate, sequential phases, adversarial review, verification, and commits."
+description: "Implement a respec plan: staleness gate, sequential phases, adversarial review, verification, and commits."
 disable-model-invocation: true
 ---
 
@@ -41,8 +41,10 @@ confirmation because it has high impact.
 
 ## Prepare the repository
 
-Use `research.md`'s `repo_path` as the worked-on repository and run every child there. Inspect the
-initial `git status --short`. If unrelated changes could be overwritten, mis-reviewed, or
+Use `research.md`'s `repo_path` as the worked-on repository and run every child there. The path was
+recorded on the machine that ran research. If it does not exist here, use the current repository
+when its `origin` remote matches `research.md`'s `repo`; otherwise ask the operator for the path.
+Inspect the initial `git status --short`. If unrelated changes could be overwritten, mis-reviewed, or
 committed, ask the operator how to isolate them.
 
 Keep this effort's commits off the default branch. Resolve the default from `origin/HEAD`, falling
@@ -136,8 +138,10 @@ exactly that cohesive phase. It must not amend, include unrelated files, change 
 edit respec artifacts. It reports the hash and subject.
 
 Verify that the commit exists, contains the accepted diff, and leaves no uncommitted phase changes.
-If commit creation fails, stop and report it. Update the phase checkboxes in `plan.md`, then
-continue.
+If commit creation fails, stop and report it. Then update the phase's checkboxes in `plan.md`. Tick
+an item only when you ran or inspected it yourself and it passed, or when the operator confirmed
+it. A child's report is not evidence. Run `respec format <change-dir>` after each update so the
+store's formatting hook accepts it, then continue.
 
 ## When the plan and reality disagree
 
@@ -167,13 +171,12 @@ After the last phase:
 
 1. Run the full automated suite and final E2E, integration, or smoke path again.
 2. Inspect the aggregate commit range.
-3. Run `respec format <change-dir>` so checkbox and status edits pass the store formatting hook.
-4. Report commits, files changed, automated and manual evidence, end-to-end evidence, review
+3. Report commits, files changed, automated and manual evidence, end-to-end evidence, review
    findings and their disposition, deviations, and the consolidated operator-only checklist.
 
-If no operator-only checks remain, set the plan status to `done`. Otherwise leave it `in-progress`.
-After the operator confirms the final checklist, tick those items, set status to `done`, and run
-`respec format <change-dir>` again.
+If no operator-only checks remain, set the plan status to `done`. Otherwise leave it `in-progress`
+until the operator confirms the final checklist, then tick those items and set it to `done`. Run
+`respec format <change-dir>` after every status or checkbox edit.
 
 Code and commits belong in the worked-on repository. Research, spec, and plan artifacts remain in
 the central store.

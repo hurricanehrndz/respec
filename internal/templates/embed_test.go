@@ -453,3 +453,20 @@ func TestPlanFixesOutcomesAndSpecTargetsHumans(t *testing.T) {
 		}
 	}
 }
+
+// A ticked box in plan.md is the record that a check passed; resuming trusts
+// it. Only the orchestrator's own verification or the operator's confirmation
+// may tick one, and each edit is formatted so the store hook accepts it.
+func TestImplementTicksOnlyVerifiedChecks(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Store = "/tmp/s"
+	r, err := Render(cfg, TargetPi)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	for _, want := range []string{"the operator confirmed", "after each update"} {
+		if !strings.Contains(r.Skills["rsx-implement/SKILL.md"], want) {
+			t.Errorf("implement skill should contain %q", want)
+		}
+	}
+}
