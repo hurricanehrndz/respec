@@ -36,16 +36,23 @@ Optional, for the best experience:
 
 - **[Hugo](https://gohugo.io)** — required only by `respec render` / `respec
   serve`, which build the store into a browsable site (with Mermaid diagrams).
+  respec does not install Hugo; it expects `hugo` on PATH.
 - **[pre-commit](https://pre-commit.com)** — if your store repo uses the
   framework, this repo ships `respec-format` hooks to guard Markdown
   formatting (a standalone `respec install-hook` alternative needs nothing
   extra).
 
-[mise](https://mise.jdx.dev) can install Go and Hugo for a store repo:
+Install Hugo with any of:
 
 ```sh
-mise use go@latest hugo@latest
+brew install hugo                # macOS / Linuxbrew
+nix profile install nixpkgs#hugo # Nix
+mise use -g hugo@latest          # mise
 ```
+
+Linux distributions also package it (e.g. `apt install hugo`, `pacman -S
+hugo`); see [Hugo's installation guide](https://gohugo.io/installation/) for
+the rest.
 
 Use `respec install-hook` or the published pre-commit hooks to check store
 formatting.
