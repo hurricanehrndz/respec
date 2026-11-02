@@ -50,6 +50,25 @@ func TestLintFailsAndExitsNonZero(t *testing.T) {
 	}
 }
 
+func TestLintChecksOptionalPullRequestRecord(t *testing.T) {
+	section := "\n## Pull requests\n\n" +
+		"| Repository | PR | Phase | Base | Depends on | Merge order | Reason | State |\n" +
+		"| --- | --- | --- | --- | --- | --- | --- | --- |\n" +
+		"| owner/api | #11 | Phase 1 | main | none | 1 | exports API | pending |\n"
+	dir := fixtureChange(t, goodSpec, goodPlan+section)
+	out, err := runRespecErr(t, "lint", dir)
+	if err == nil || !strings.Contains(out, `invalid State "pending"`) {
+		t.Fatalf("expected PR state failure: %v\n%s", err, out)
+	}
+	if err := os.WriteFile(store.PlanPath(dir), []byte(goodPlan+strings.Replace(section, "pending", "open", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err = runRespecErr(t, "lint", dir)
+	if err != nil {
+		t.Fatalf("valid record failed lint: %v\n%s", err, out)
+	}
+}
+
 func TestLintSkipsAbsentArtifacts(t *testing.T) {
 	// Only plan.md present (research.md/spec.md absent) — lint validates just plan.
 	dir := t.TempDir()

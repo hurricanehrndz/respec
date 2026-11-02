@@ -167,6 +167,7 @@ func (pl Plan) Validate() []string {
 		p = append(p, "missing section: at least one Phase")
 	}
 	p = appendPhaseProblems(p, pl)
+	p = appendPullRequestProblems(p, pl)
 	return p
 }
 

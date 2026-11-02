@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hurricanehrndz/respec/internal/artifact"
 	"github.com/hurricanehrndz/respec/internal/config"
 )
 
@@ -300,6 +301,72 @@ func TestImplementWorksOnAnEffortBranch(t *testing.T) {
 		if !strings.Contains(r.Skills["rsx-implement/SKILL.md"], want) {
 			t.Errorf("implement skill should cover %q", want)
 		}
+	}
+}
+
+// PR bookkeeping survives every render target without imposing an issue tracker
+// or granting permission to publish. Replacements preserve the old PR's history.
+func TestPullRequestRecordIsPartOfTheWorkflow(t *testing.T) {
+	for _, target := range []Target{TargetPi, TargetPrimeAgent, TargetClaude, TargetCodex} {
+		t.Run(target.Name, func(t *testing.T) {
+			r, err := Render(config.Defaults(), target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, section, ok := strings.Cut(r.Skills["rsx-plan/SKILL.md"], "    ## Pull requests\n")
+			if !ok {
+				t.Fatal("plan must include a PR record skeleton")
+			}
+			section, _, _ = strings.Cut(section, "    ## Phase 1:")
+			section = strings.ReplaceAll(section, "    ", "")
+			doc := "---\ntitle: t\nstatus: draft\nspec_sha256: abc\n---\n" +
+				"## Overview\nx\n\n## Phase 1: Implement\n\n" +
+				"### Automated Verification\n- [ ] test\n\n### Manual Verification\n- [ ] inspect\n\n" +
+				"## Pull requests\n" + section
+			plan, err := artifact.Parse(artifact.KindPlan, []byte(doc))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if problems := plan.Validate(); len(problems) != 0 {
+				t.Fatalf("rendered PR skeleton must lint clean: %v", problems)
+			}
+			for key, required := range map[string][]string{
+				"rsx-plan/SKILL.md": {
+					"## Pull requests",
+					"leave the table empty until PRs exist",
+					"Preserve pull request rows and their history",
+					"do not invent numbers or links",
+					"respec lint",
+					"Add an **Issue** column only when this effort actually uses an issue tracker",
+				},
+				"rsx-implement/SKILL.md": {
+					"## Keep the pull request record current",
+					"Do not treat the record as permission to push, open, close, or merge PRs",
+					"opened, reopened, merged, or closed, update the record in the same step",
+					"On resume, reconcile recorded PRs",
+					"module pins, API consumption, and stacked bases",
+					"a module pin must be bumped afterward",
+					"gets a new row",
+					"Retain the old row as `superseded`",
+					"Add **Issue** only when the effort uses an issue tracker",
+					"**Reviewed head** from that evidence",
+					"respec format <change-dir>",
+					"respec lint <change-dir>",
+				},
+			} {
+				got := strings.Join(strings.Fields(r.Skills[key]), " ")
+				for _, want := range append(required, "| Repository | PR | Phase | Base | Depends on | Merge order | Reason | State |") {
+					if !strings.Contains(got, want) {
+						t.Errorf("%s must cover %q", key, want)
+					}
+				}
+				for _, forbidden := range []string{"jira", "yelp", "u/<user>/"} {
+					if strings.Contains(strings.ToLower(got), forbidden) {
+						t.Errorf("%s must not impose %q", key, forbidden)
+					}
+				}
+			}
+		})
 	}
 }
 

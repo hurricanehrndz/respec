@@ -143,6 +143,37 @@ an item only when you ran or inspected it yourself and it passed, or when the op
 it. A child's report is not evidence. Run `respec format <change-dir>` after each update so the
 store's formatting hook accepts it, then continue.
 
+## Keep the pull request record current
+
+When the operator requests PR work, use **Pull requests** in `plan.md`, adding the section if an
+older plan lacks it. Do not treat the record as permission to push, open, close, or merge PRs.
+When a PR is opened, reopened, merged, or closed, update the record in the same step, before
+reporting completion. On resume, reconcile recorded PRs with their observed state.
+
+Use these columns:
+
+    | Repository | PR | Phase | Base | Depends on | Merge order | Reason | State |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+
+Copy the repository, PR number/link, base branch, and observed state from the PR. Record its phase.
+Use `open`, `draft`, `merged`, `closed`, or `superseded`. Identify dependencies by repository and PR
+number/link, or write `none`. Add **Issue** only when the effort uses an issue tracker; copy known
+references, never invent them. When the plan records PR review evidence, add **Reviewed head**
+from that evidence; do not present it as covering a later head.
+
+Derive merge order from real dependencies: module pins, API consumption, and stacked bases. Give
+each active PR a positive integer position in the merge sequence and a **Reason**, such as
+"after owner/api#11: consumes its exported API". State explicitly when a PR cannot merge until
+another lands and a module pin must be bumped afterward. Record the required pin bump and any
+base retargeting before the consuming PR can merge. For independent PRs, say the order is arbitrary.
+
+A PR reopened under a new number, including on a differently named branch, gets a new row. Retain
+the old row as `superseded`, name its replacement in **Reason**, and update dependent references
+and merge positions. Preserve closed and merged rows as history. Keep bases, dependencies, states,
+and review evidence current after changes. Run `respec format <change-dir>` and
+`respec lint <change-dir>` after each record update. If the PR action succeeds but the record update
+fails, report the PR and the failure; do not repeat the remote action.
+
 ## When the plan and reality disagree
 
 The plan fixes outcomes, contracts, and constraints, not individual edits. When the code differs
@@ -171,7 +202,8 @@ After the last phase:
 
 1. Run the full automated suite and final E2E, integration, or smoke path again.
 2. Inspect the aggregate commit range.
-3. Report commits, files changed, automated and manual evidence, end-to-end evidence, review
+3. Reconcile any pull request record and report open PRs, merge order, and remaining merge blockers.
+4. Report commits, files changed, automated and manual evidence, end-to-end evidence, review
    findings and their disposition, deviations, and the consolidated operator-only checklist.
 
 If no operator-only checks remain, set the plan status to `done`. Otherwise leave it `in-progress`

@@ -86,7 +86,8 @@ For an existing plan, amend instead of regenerating. Edit surgically and preserv
 checkboxes unless the change invalidates them; tell the operator before clearing one. Scope or
 behavior feedback changes `spec.md` first. Approach-only feedback changes `plan.md`. A stale status
 means the spec changed, so amend the plan to match. Preserve `execution_mode` unless the operator
-explicitly changes it. After any edit, make sure a runnable end-to-end path remains.
+explicitly changes it. Preserve pull request rows and their history when amending. After any edit,
+make sure a runnable end-to-end path remains.
 
 Write `spec.md` for a human reviewer first. Someone who has not read the research should understand
 from the spec alone what problem this solves, what changes for users or callers, and how they will
@@ -131,6 +132,11 @@ Use this `plan.md` body:
     - Commits: <native model/effort hints, or explicit external agent spec>
     - Fallback: <what to do if a preference cannot be honored>
 
+    ## Pull requests
+    <!-- Include when phases will produce PRs; leave the table empty until PRs exist. -->
+    | Repository | PR | Phase | Base | Depends on | Merge order | Reason | State |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+
     ## Phase 1: <name>
     **Agent:** <spec> — <why this one>   <!-- external implementers only; omit for native workers -->
     <outcome this phase delivers, contracts later phases rely on, binding constraints, starting points>
@@ -152,6 +158,14 @@ item. Reserve `Operator:` for checks an agent cannot perform because each one st
 
 `respec lint` requires **Requirements** in the spec and **Overview**, at least one **Phase**,
 **Automated Verification**, and **Manual Verification** in the plan. Keep those headings verbatim.
+
+Include **Pull requests** when phases will produce PRs, even across repositories. Record expected
+PR boundaries and dependencies in the phase prose; do not invent numbers or links. `respec lint`
+checks the optional section's table columns, nonempty required cells, positive integer merge order,
+and states: `open`, `draft`, `merged`, `closed`, `superseded`. Keep the heading and columns verbatim.
+Use `none` for no dependencies. Add an **Issue** column only when this effort actually uses an
+issue tracker; copy known references and never invent one. Add **Reviewed head** when recording
+review evidence for a PR.
 
 Plan outcomes, not edits. For each phase, state what it delivers, which contracts later phases or
 callers depend on (interfaces, schemas, flags, output formats), which research decisions and

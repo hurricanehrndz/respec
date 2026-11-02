@@ -105,6 +105,45 @@ From any repo, in an agent session (the pi names are used below; Claude Code spe
 
 Artifacts remain in the central store; implementation changes land only in the worked-on repo.
 
+### Pull request record
+
+When phases will produce pull requests, planning includes an optional `Pull requests`
+section in `plan.md`. The table starts empty until PRs exist. Implementation updates
+it in the same step as an authorized PR action and reconciles it on resume:
+
+```markdown
+## Pull requests
+
+| Repository | PR | Phase | Base | Depends on | Merge order | Reason | State |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| owner/api | #11 | Phase 1 | main | none | 1 | exports API consumed by owner/app#12 | open |
+| owner/app | #12 | Phase 1 | main | owner/api#11 | 2 | after owner/api#11: consumes its exported API; bump pin after it lands | draft |
+```
+
+Use PR links when available and repository-qualified dependency references.
+Merge order follows module pins, API consumption, and stacked bases, not opening
+order. Record merge blockers, post-merge pin bumps, and base retargeting. If PRs
+are independent, say the order is arbitrary. The record does not authorize
+publishing or merging; those actions remain the operator's call.
+
+A replacement PR with a new number gets a new row, including when a branch must
+be renamed. Keep the old row as `superseded`, name its replacement in `Reason`,
+and update dependent references. Retain closed and merged rows as history.
+Replanning preserves the record. Add an `Issue` column only when the effort uses
+an issue tracker, using known references only. `Reviewed head` is optional review
+evidence and must not be treated as reviewing a later head.
+
+`respec lint` leaves plans without this section valid. When `## Pull requests` is
+present, it requires a Markdown table with the eight columns above. Column names
+are case-insensitive and may be reordered. Every required cell must be nonempty;
+use `none` for no dependencies. `Merge order` must be a positive integer and
+`State` must be `open`, `draft`, `merged`, `closed`, or `superseded`. Duplicate
+column names are rejected. Empty tables and extra columns are allowed; optional
+cells may be blank. Historical rows may retain their old merge positions.
+Lint checks structure, not remote state, PR identities, phase references, or the
+correctness of dependency reasoning. The agent owns those judgments and records
+observed PR facts; the CLI owns deterministic validation and formatting.
+
 ### Attended and unattended runs
 
 There are three commands, not five. Whether a plan runs unattended is a property of the plan, not a
@@ -132,7 +171,7 @@ anywhere but the final phase is rejected, because it would stall an unattended r
 | `respec stamp <change-dir> [--repo <path>]` | Write provenance + `spec_sha256` into the artifacts, then reflow them |
 | `respec status <change-dir> [--json]` | Report `fresh` / `stale` / `unstamped` plus per-artifact status |
 | `respec list [--json]` | List every effort in the store, grouped by repo, with status/staleness |
-| `respec lint <change-dir> [--json]` | Validate frontmatter fields, `status` values, and required sections |
+| `respec lint <change-dir> [--json]` | Validate frontmatter, required sections, and optional PR records |
 | `respec format <path>... [--check]` | Reflow prose in files or every `*.md` under a dir; non-prose stays byte-identical |
 | `respec templates list\|eject [name]` | Inspect templates / copy embedded defaults into `templates_dir` |
 | `respec agents [--filter S] [--all] [--json]` | Probe external agent CLIs, effort levels, and reachable models, not native workers |
@@ -145,7 +184,8 @@ anywhere but the final phase is rejected, because it would stall an unattended r
 hand-write: provenance (`date`, `repo`, `repo_path`, `git_commit`, read from the
 worked-on repo and written **write-once** into `research.md`/`spec.md`) plus
 `spec_sha256` (refreshed into `plan.md`). It reflows each artifact it touches.
-`respec lint` then checks required fields, `status` values, and sections.
+`respec lint` then checks required fields, `status` values, sections, and optional
+pull request records.
 
 Efforts live at `<store>/<owner-repo>/<slug>/` — grouped by the primary repo,
 identified by `slug` (the date is in frontmatter, not the path). `respec list`

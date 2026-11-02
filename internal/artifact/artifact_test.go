@@ -120,6 +120,88 @@ func TestPlanRejectsBadExecutionMode(t *testing.T) {
 	}
 }
 
+const pullRequestTable = `| Repository | PR | Phase | Base | Depends on | Merge order | Reason | State |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+`
+
+func TestPlanPullRequests(t *testing.T) {
+	row := "| owner/api | [#11](https://example.com/owner/api/pull/11) | Phase 1 | main | none | 1 | exports API for owner/app#12 | open |\n"
+	for _, tc := range []struct {
+		name    string
+		section string
+		problem string
+	}{
+		{"absent", "", ""},
+		{"empty record", "## Pull requests\n\n" + pullRequestTable, ""},
+		{"open", "## Pull requests\n\n" + pullRequestTable + row, ""},
+		{"draft", "## Pull requests\n\n" + pullRequestTable + strings.Replace(row, "| open |", "| draft |", 1), ""},
+		{"merged", "## Pull requests\n\n" + pullRequestTable + strings.Replace(row, "| open |", "| merged |", 1), ""},
+		{"closed", "## Pull requests\n\n" + pullRequestTable + strings.Replace(row, "| open |", "| closed |", 1), ""},
+		{"superseded", "## Pull requests\n\n" + pullRequestTable + strings.Replace(row, "| open |", "| superseded |", 1), ""},
+		{"missing table", "## Pull requests\n\nNone yet.\n", "Pull requests: missing table"},
+		{"missing column", "## Pull requests\n\n" + strings.Replace(pullRequestTable, "Repository", "Repo", 1) + row, "Pull requests: missing column: Repository"},
+		{"duplicate column", "## Pull requests\n\n" + strings.Replace(strings.Replace(pullRequestTable, "| State |", "| State | PR |", 1), "| --- |\n", "| --- | --- |\n", 1), "Pull requests: duplicate column: pr"},
+		{"negative order", "## Pull requests\n\n" + pullRequestTable + strings.Replace(row, "| 1 |", "| -1 |", 1), "Pull requests row 1: Merge order must be a positive integer"},
+		{"empty field", "## Pull requests\n\n" + pullRequestTable + strings.Replace(row, "| main |", "| |", 1), "Pull requests row 1: missing Base"},
+		{"bad state", "## Pull requests\n\n" + pullRequestTable + strings.Replace(row, "| open |", "| pending |", 1), `Pull requests row 1: invalid State "pending" (allowed: open|draft|merged|closed|superseded)`},
+		{"zero order", "## Pull requests\n\n" + pullRequestTable + strings.Replace(row, "| 1 |", "| 0 |", 1), "Pull requests row 1: Merge order must be a positive integer"},
+		{"prose order", "## Pull requests\n\n" + pullRequestTable + strings.Replace(row, "| 1 |", "| first |", 1), "Pull requests row 1: Merge order must be a positive integer"},
+		{"code is not a record", "```markdown\n## Pull requests\n\n" + pullRequestTable + "```\n", ""},
+		{"other section table", "## Pull requests\n\n## Notes\n\n" + pullRequestTable + row, "Pull requests: missing table"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := planWithBody("manual", twoPhases+"\n"+tc.section).Validate()
+			if tc.problem == "" {
+				if len(got) != 0 {
+					t.Fatalf("valid plan reported problems: %v", got)
+				}
+			} else if !contains(got, tc.problem) {
+				t.Errorf("expected %q in %v", tc.problem, got)
+			}
+		})
+	}
+}
+
+func TestPlanPullRequestRequiredCells(t *testing.T) {
+	values := []string{"owner/api", "#11", "Phase 1", "main", "none", "1", "exports API", "open"}
+	for i, name := range pullRequestColumns {
+		t.Run(name, func(t *testing.T) {
+			cells := append([]string(nil), values...)
+			cells[i] = ""
+			body := twoPhases + "\n## Pull requests\n\n" + pullRequestTable + "| " + strings.Join(cells, " | ") + " |\n"
+			got := planWithBody("manual", body).Validate()
+			if !contains(got, "Pull requests row 1: missing "+name) {
+				t.Errorf("empty required cell must be rejected: %v", got)
+			}
+		})
+	}
+}
+
+func TestPlanPullRequestColumnsCanBeReordered(t *testing.T) {
+	body := twoPhases + `
+## pull requests
+
+| state | reason | merge order | depends on | base | phase | pr | repository |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| open | exports API | 1 | none | main | Phase 1 | #11 | owner/api |
+`
+	if got := planWithBody("manual", body).Validate(); len(got) != 0 {
+		t.Fatalf("column order and case must not matter: %v", got)
+	}
+}
+
+// Historical rows can retain their order, and optional evidence needs no issue tracker.
+func TestPlanPullRequestsOptionalColumnsAndHistory(t *testing.T) {
+	table := strings.Replace(pullRequestTable, "| State |", "| State | Issue | Reviewed head |", 1)
+	table = strings.Replace(table, "| --- |\n", "| --- | --- | --- |\n", 1)
+	body := twoPhases + "\n## Pull requests\n\n" + table +
+		"| owner/api | #11 | Phase 1 | main | none | 1 | replaced by owner/api#13 | superseded | | abc123 |\n" +
+		"| owner/api | #13 | Phase 1 | main | none | 1 | exports API | open | | |\n"
+	if got := planWithBody("manual", body).Validate(); len(got) != 0 {
+		t.Fatalf("history and optional columns should lint clean: %v", got)
+	}
+}
+
 func TestSpecValid(t *testing.T) {
 	doc := "---\ntitle: s\nstatus: approved\ndate: 2026-07-01T00:00:00Z\n---\n# S\n\n## Requirements\nr\n"
 	if p := problemsFor(t, KindSpec, doc); len(p) != 0 {
