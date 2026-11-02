@@ -191,8 +191,9 @@ Efforts live at `<store>/<owner-repo>/<slug>/` — grouped by the primary repo,
 identified by `slug` (the date is in frontmatter, not the path). `respec list`
 gives a store-wide overview. A plan may declare `depends_on` (a bare `slug` for
 the same repo, or `repo/slug` cross-repo); `respec list` shows a dependent as
-`(blocked)` until its dependencies reach `status: done`. This is for visibility —
-respec does not orchestrate or auto-run efforts.
+`(blocked)` until its dependencies reach `status: done` or `status: superseded`.
+A superseded plan names its replacement in `superseded_by`. This is for
+visibility — respec does not orchestrate or auto-run efforts.
 
 Breaking change: earlier versions laid the store out as
 `<problem-space>/<YYYY-MM-DD-slug>/`. respec does not migrate old stores —

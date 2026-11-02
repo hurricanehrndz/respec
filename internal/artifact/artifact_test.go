@@ -215,12 +215,34 @@ func TestParseUnknownKind(t *testing.T) {
 	}
 }
 
-func TestPlanIsDone(t *testing.T) {
-	if (Plan{Status: "in-progress"}).IsDone() {
-		t.Error("in-progress plan reported done")
+func TestPlanIsResolved(t *testing.T) {
+	if (Plan{Status: "in-progress"}).IsResolved() {
+		t.Error("in-progress plan reported resolved")
 	}
-	if !(Plan{Status: StatusDone}).IsDone() {
-		t.Error("done plan not reported done")
+	if !(Plan{Status: StatusDone}).IsResolved() {
+		t.Error("done plan not reported resolved")
+	}
+	if !(Plan{Status: StatusSuperseded}).IsResolved() {
+		t.Error("superseded plan not reported resolved")
+	}
+}
+
+// A superseded plan must say what replaced it, or a reader of the abandoned
+// effort has no way forward; and superseded_by on a live plan is a
+// contradiction that would otherwise go unnoticed.
+func TestPlanSupersededBy(t *testing.T) {
+	pl := planWithBody("manual", twoPhases)
+	pl.Status = StatusSuperseded
+	if got := pl.Validate(); !containsSubstr(got, "missing frontmatter: superseded_by") {
+		t.Errorf("superseded without superseded_by should be rejected, got %v", got)
+	}
+	pl.SupersededBy = "token-rotation-v2"
+	if got := pl.Validate(); len(got) != 0 {
+		t.Errorf("superseded with superseded_by should lint clean, got %v", got)
+	}
+	pl.Status = "draft"
+	if got := pl.Validate(); !containsSubstr(got, "status is not superseded") {
+		t.Errorf("superseded_by on a draft plan should be rejected, got %v", got)
 	}
 }
 

@@ -40,10 +40,12 @@ Write the human fields. `respec stamp` fills the deterministic fields.
 | --- | --- | --- |
 | research.md | `topic`, `status` (`draft` or `complete`), optional `tags` | `date`, `repo`, `repo_path`, `git_commit` (write-once) |
 | spec.md | `title`, `status` (`draft` or `approved`), optional `tags` | `date` (write-once) |
-| plan.md | `title`, `status` (`draft`, `in-progress`, or `done`), `execution_mode` (`manual` or `auto`), optional `depends_on` | `spec_sha256` (refreshed) |
+| plan.md | `title`, `status` (`draft`, `in-progress`, `done`, or `superseded`), `execution_mode` (`manual` or `auto`), optional `depends_on`, `superseded_by` (only when `superseded`) | `spec_sha256` (refreshed) |
 
 A `depends_on` value is a bare slug for an effort in the same repository or `repo/slug` for a
-cross-repository dependency. `respec lint <change-dir>` validates frontmatter, status values, and
+cross-repository dependency. Set `status: superseded` with `superseded_by: <slug or repo/slug>`
+when another effort replaces this one. `respec list` treats a `done` or `superseded` dependency as
+resolved. `respec lint <change-dir>` validates frontmatter, status values, and
 required body sections.
 
 ## Delegation policy

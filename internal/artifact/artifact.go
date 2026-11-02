@@ -24,15 +24,21 @@ const (
 	KindPlan     Kind = "plan"
 )
 
-// StatusDone is the terminal plan status; a depends_on reference is satisfied
-// only when the dependency's plan reaches it.
-const StatusDone = "done"
+// Terminal plan statuses. A depends_on reference is satisfied only when the
+// dependency's plan reaches one of them. A superseded plan names its
+// replacement in superseded_by and resolves its dependants without waiting for
+// that replacement: the dependant either never needed the abandoned work, or
+// it should be replanned to depend on the replacement instead.
+const (
+	StatusDone       = "done"
+	StatusSuperseded = "superseded"
+)
 
 // Allowed status values per artifact.
 var (
 	researchStatuses = []string{"draft", "complete"}
 	specStatuses     = []string{"draft", "approved"}
-	planStatuses     = []string{"draft", "in-progress", StatusDone}
+	planStatuses     = []string{"draft", "in-progress", StatusDone, StatusSuperseded}
 	executionModes   = []string{"manual", "auto"}
 )
 
@@ -60,19 +66,24 @@ type Spec struct {
 }
 
 // Plan is the typed frontmatter of plan.md. The agent writes title, status,
-// optional execution_mode, and optional depends_on (slugs of efforts that must
-// finish first); respec stamp fills spec_sha256.
+// optional execution_mode, optional depends_on (slugs of efforts that must
+// finish first), and superseded_by when status is superseded (the replacing
+// effort, written like a depends_on reference); respec stamp fills spec_sha256.
 type Plan struct {
 	Title         string   `yaml:"title"`
 	Status        string   `yaml:"status"`
 	ExecutionMode string   `yaml:"execution_mode"`
 	SpecSHA       string   `yaml:"spec_sha256"`
 	DependsOn     []string `yaml:"depends_on"`
+	SupersededBy  string   `yaml:"superseded_by"`
 	body          []byte
 }
 
-// IsDone reports whether the plan has reached its terminal status.
-func (pl Plan) IsDone() bool { return pl.Status == StatusDone }
+// IsResolved reports whether the plan has reached a terminal status, which
+// satisfies any depends_on reference to it.
+func (pl Plan) IsResolved() bool {
+	return pl.Status == StatusDone || pl.Status == StatusSuperseded
+}
 
 // Artifact is the common contract: report validation problems (empty = valid).
 type Artifact interface {
@@ -158,6 +169,13 @@ func (pl Plan) Validate() []string {
 	p = appendMissing(p, "status", pl.Status)
 	p = appendMissing(p, "spec_sha256", pl.SpecSHA)
 	p = appendBadStatus(p, pl.Status, planStatuses)
+	superseded := pl.Status == StatusSuperseded
+	if superseded && strings.TrimSpace(pl.SupersededBy) == "" {
+		p = append(p, "missing frontmatter: superseded_by (required when status is superseded)")
+	}
+	if !superseded && pl.SupersededBy != "" {
+		p = append(p, "superseded_by is set but status is not superseded")
+	}
 	if pl.ExecutionMode != "" && !oneOf(pl.ExecutionMode, executionModes) {
 		p = append(p, fmt.Sprintf("invalid execution_mode %q (allowed: %s)", pl.ExecutionMode, strings.Join(executionModes, "|")))
 	}

@@ -40,6 +40,11 @@ func TestListGroupsAndBlocks(t *testing.T) {
 		"---\ntitle: PR\nstatus: done\n---\n# P\n")
 	seedChange(t, store, "acme-billing", "invoicing",
 		"---\ntitle: IN\nstatus: draft\ndepends_on: [proration]\n---\n# P\n")
+	// A dependency on a superseded effort no longer blocks.
+	seedChange(t, store, "acme-billing", "tax-v1",
+		"---\ntitle: TX\nstatus: superseded\nsuperseded_by: tax-v2\n---\n# P\n")
+	seedChange(t, store, "acme-billing", "receipts",
+		"---\ntitle: RC\nstatus: draft\ndepends_on: [tax-v1]\n---\n# P\n")
 
 	out := runRespec(t, "list", "--json")
 	var rows []listRow
@@ -50,14 +55,17 @@ func TestListGroupsAndBlocks(t *testing.T) {
 	for _, r := range rows {
 		by[r.Repo+"/"+r.Slug] = r
 	}
-	if len(rows) != 4 {
-		t.Fatalf("want 4 rows, got %d: %+v", len(rows), rows)
+	if len(rows) != 6 {
+		t.Fatalf("want 6 rows, got %d: %+v", len(rows), rows)
 	}
 	if r := by["hurricanehrndz-respec/typeahead"]; !r.Blocked {
 		t.Errorf("typeahead should be blocked (depends on in-progress token-rotation): %+v", r)
 	}
 	if r := by["acme-billing/invoicing"]; r.Blocked {
 		t.Errorf("invoicing should not be blocked (depends on done proration): %+v", r)
+	}
+	if r := by["acme-billing/receipts"]; r.Blocked {
+		t.Errorf("receipts should not be blocked (depends on superseded tax-v1): %+v", r)
 	}
 	if r := by["hurricanehrndz-respec/token-rotation"]; r.Blocked {
 		t.Errorf("token-rotation has no deps, should not be blocked: %+v", r)

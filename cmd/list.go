@@ -43,18 +43,18 @@ func init() {
 			}
 
 			rows := make([]listRow, 0, len(changes))
-			doneByRef := map[string]bool{} // "repo/slug" -> plan is done
+			resolvedByRef := map[string]bool{} // "repo/slug" -> plan is done or superseded
 			var warnings []string
 			for _, ch := range changes {
-				row, done, warns := effortRow(ch)
+				row, resolved, warns := effortRow(ch)
 				rows = append(rows, row)
 				warnings = append(warnings, warns...)
-				doneByRef[ch.Repo+"/"+ch.Slug] = done
+				resolvedByRef[ch.Repo+"/"+ch.Slug] = resolved
 			}
 
 			var unresolved []string
 			for i := range rows {
-				rows[i].Blocked, unresolved = resolveDeps(rows[i], doneByRef, unresolved)
+				rows[i].Blocked, unresolved = resolveDeps(rows[i], resolvedByRef, unresolved)
 			}
 
 			sort.Slice(rows, func(i, j int) bool {
@@ -90,7 +90,7 @@ func init() {
 }
 
 // effortRow reads a change's plan/spec/date into a display row (blocked unset)
-// plus whether its plan is done, returning warnings for anything unreadable or
+// plus whether its plan is resolved (done or superseded), returning warnings for anything unreadable or
 // unparseable rather than silently misreporting it (fail loud).
 func effortRow(ch store.Change) (listRow, bool, []string) {
 	row := listRow{Repo: ch.Repo, Slug: ch.Slug, Dir: ch.Dir}
@@ -113,28 +113,28 @@ func effortRow(ch store.Change) (listRow, bool, []string) {
 		return row, false, append(warns, fmt.Sprintf("%s: %v", store.PlanPath(ch.Dir), perr))
 	}
 	var recorded string
-	var done bool
+	var resolved bool
 	if pl, ok := art.(artifact.Plan); ok {
 		row.PlanStatus = pl.Status
 		row.DependsOn = pl.DependsOn
 		recorded = pl.SpecSHA
-		done = pl.IsDone()
+		resolved = pl.IsResolved()
 	}
 	row.Spec = specStateFor(ch.Dir, recorded)
-	return row, done, warns
+	return row, resolved, warns
 }
 
-// resolveDeps computes whether a row is blocked (any resolved dependency is not
-// done) and accumulates unresolved references. Same-repo deps are bare slugs;
-// cross-repo deps are "repo/slug".
-func resolveDeps(row listRow, doneByRef map[string]bool, unresolved []string) (bool, []string) {
+// resolveDeps computes whether a row is blocked (any known dependency is
+// neither done nor superseded) and accumulates unknown references. Same-repo
+// deps are bare slugs; cross-repo deps are "repo/slug".
+func resolveDeps(row listRow, resolvedByRef map[string]bool, unresolved []string) (bool, []string) {
 	blocked := false
 	for _, d := range row.DependsOn {
 		ref := d
 		if !strings.Contains(d, "/") {
 			ref = row.Repo + "/" + d
 		}
-		done, known := doneByRef[ref]
+		done, known := resolvedByRef[ref]
 		if !known {
 			unresolved = append(unresolved, d)
 			continue
